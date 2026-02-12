@@ -163,7 +163,7 @@
 	<array>
 		<string>fetch</string>
 	</array>
-	<key>UIDesignRequiresCompatibility</key>
+	<key>UIDesignRequiresCompatibility_</key>
 	<true/>
 	<key>UIDeviceFamily</key>
 	<array>
