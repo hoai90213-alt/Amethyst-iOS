@@ -51,9 +51,11 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     BOOL hasLiquidGlass = _UISolariumEnabled && _UISolariumEnabled();
     
     if(hasLiquidGlass) {
-        self.versionTextField = [[PickTextField alloc] initWithFrame:CGRectMake(0, 0, MIN(self.view.frame.size.width,self.view.frame.size.height)*0.75, 36)];
+        self.versionTextField = [[PickTextField alloc] initWithFrame:CGRectMake(0, 0, MIN(self.view.frame.size.width,self.view.frame.size.height)*0.8 - 40, 36)];
+        self.progressViewMain = [[UIProgressView alloc] initWithFrame:CGRectMake(20, -5, self.versionTextField.frame.size.width-40, 0)];
     } else {
         self.versionTextField = [[PickTextField alloc] initWithFrame:CGRectMake(4, 4, self.toolbar.frame.size.width * 0.8 - 8, self.toolbar.frame.size.height - 8)];
+        self.progressViewMain = [[UIProgressView alloc] initWithFrame:CGRectMake(0, 0, targetToolbar.frame.size.width, 0)];
     }
     [self.versionTextField addTarget:self.versionTextField action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
     self.versionTextField.autoresizingMask = AUTORESIZE_MASKS;
@@ -72,8 +74,6 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     [self reloadProfileList];
 
     self.versionTextField.inputView = self.versionPickerView;
-
-    self.progressViewMain = [[UIProgressView alloc] initWithFrame:self.versionTextField.frame];
 
     UIView *textFieldContainer = nil;
     if(hasLiquidGlass) {
@@ -264,6 +264,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         }
     }
     self.versionTextField.alpha = enabled ? 1 : 0.2;
+    self.versionTextField.enabled = enabled;
     self.progressViewMain.hidden = enabled;
     self.progressText.text = nil;
     if (downloading) {
@@ -274,6 +275,8 @@ static void *ProgressObserverContext = &ProgressObserverContext;
             self.buttonInstallItem.title = localize(enabled ? @"Play" : @"Details", nil);
             self.buttonInstallItem.enabled = YES;
         }
+    } else {
+        self.buttonInstallItem.enabled = enabled;
     }
     UIApplication.sharedApplication.idleTimerDisabled = !enabled;
 }
@@ -496,8 +499,14 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [sidebarViewController updateAccountInfo];
-    if (!self.viewControllers.firstObject.toolbarItems && self.globalToolbarItems) {
-        self.viewControllers.firstObject.toolbarItems = self.globalToolbarItems;
+    if (self.globalToolbarItems) {
+        if (!self.viewControllers.firstObject.toolbarItems) {
+            self.viewControllers.firstObject.toolbarItems = self.globalToolbarItems;
+        }
+        // resize textFieldContainer to fit, need dispatch queue or it freezes for some reason...
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.versionTextField.superview.frame = CGRectMake(0, 0, MIN(self.view.frame.size.width,self.view.frame.size.height)*0.8 - 40, 36);
+        });
     }
 }
 

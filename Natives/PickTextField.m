@@ -1,4 +1,5 @@
 #import "PickTextField.h"
+#import "UIKit+hook.h"
 #import "utils.h"
 
 @interface PickViewController : UIViewController
@@ -50,9 +51,9 @@
 }
 
 - (BOOL)becomeFirstResponder {
-    if (@available(iOS 19.0, *)) {
-        // iOS 26 uses popover aswell
-    } else if (!NSProcessInfo.processInfo.isMacCatalystApp) {
+    // iOS 26 uses popover aswell
+    BOOL hasLiquidGlass = _UISolariumEnabled && _UISolariumEnabled();
+    if (!hasLiquidGlass && !NSProcessInfo.processInfo.isMacCatalystApp) {
         return [super becomeFirstResponder];
     }
 
