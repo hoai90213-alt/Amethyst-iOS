@@ -172,7 +172,7 @@ static PLLogOutputView* current;
 + (void)handleExitCode:(int)code {
     if (!current) return;
     dispatch_async(dispatch_get_main_queue(), ^(void){
-        if (current.hidden) {
+        if (current.navController.view.hidden) {
             [current actionToggleLogOutput];
         }
         // Cleanup navigation bar
@@ -200,7 +200,7 @@ static PLLogOutputView* current;
             NSCharacterSet.newlineCharacterSet];
 
         // Print last 100 lines from latestlog.txt
-        for (int i = MAX(lines.count-100, 0); i < lines.count; i++) {
+        for (int i = (lines.count > 100) ? lines.count - 100 : 0; i < lines.count; i++) {
             [self _appendToLog:lines[i]];
         }
 

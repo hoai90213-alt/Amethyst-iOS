@@ -10,8 +10,4 @@
     [self.rootView addSubview:self.logOutputView.navController.view];
 }
 
-- (void)viewWillTransitionToSize_LogView:(CGRect)frame {
-    self.logOutputView.frame = frame;
-}
-
 @end
