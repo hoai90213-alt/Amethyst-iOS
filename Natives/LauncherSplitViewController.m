@@ -24,12 +24,13 @@ extern NSMutableDictionary *prefDict;
 
     UINavigationController *masterVc = [[UINavigationController alloc] initWithRootViewController:[[LauncherMenuViewController alloc] init]];
     LauncherNavigationController *detailVc = [[LauncherNavigationController alloc] initWithRootViewController:[[LauncherProfilesViewController alloc] init]];
-    detailVc.toolbarHidden = NO;
+    detailVc.toolbarHidden = YES;
 
     self.viewControllers = @[masterVc, detailVc];
     [self changeDisplayModeForSize:self.view.frame.size];
-    
-    self.maximumPrimaryColumnWidth = self.view.bounds.size.width * 0.95;
+    self.preferredPrimaryColumnWidthFraction = 0.66;
+    self.minimumPrimaryColumnWidth = 320.0;
+    self.maximumPrimaryColumnWidth = self.view.bounds.size.width * 0.74;
 }
 
 - (void)splitViewController:(UISplitViewController *)svc willChangeToDisplayMode:(UISplitViewControllerDisplayMode)displayMode {

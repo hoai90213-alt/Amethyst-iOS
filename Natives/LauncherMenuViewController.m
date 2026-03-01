@@ -3,6 +3,7 @@
 #import "AFNetworking.h"
 #import "ALTServerConnection.h"
 #import "LauncherNavigationController.h"
+#import "LauncherPrefGameDirViewController.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNewsViewController.h"
 #import "LauncherPreferences.h"
@@ -43,6 +44,7 @@
 @property(nonatomic) NSMutableArray<LauncherMenuCustomItem*> *options;
 @property(nonatomic) UILabel *statusLabel;
 @property(nonatomic) int lastSelectedIndex;
+@property(nonatomic) UIImageView *logoTitleView;
 @end
 
 @implementation LauncherMenuViewController
@@ -54,52 +56,54 @@
     
     self.isInitialVc = YES;
     
-    UIImageView *titleView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppLogo"]];
-    [titleView setContentMode:UIViewContentModeScaleAspectFit];
-    self.navigationItem.titleView = titleView;
-    [titleView sizeToFit];
-    
-    self.options = @[
-        [LauncherMenuCustomItem vcClass:LauncherNewsViewController.class],
-        [LauncherMenuCustomItem vcClass:LauncherProfilesViewController.class],
-        [LauncherMenuCustomItem vcClass:LauncherPreferencesViewController.class],
-    ].mutableCopy;
+    self.navigationItem.title = @"Zenith Launcher";
+    UIBarButtonItem *installItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"arrow.down.circle.fill"]
+                                                                     style:UIBarButtonItemStylePlain
+                                                                    target:self
+                                                                    action:@selector(actionQuickInstallJar)];
+    UIBarButtonItem *settingsItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"gearshape.fill"]
+                                                                      style:UIBarButtonItemStylePlain
+                                                                     target:self
+                                                                     action:@selector(actionOpenSettings)];
+    self.navigationItem.rightBarButtonItems = @[settingsItem, installItem];
+
+    __weak LauncherMenuViewController *weakSelf = self;
+    self.options = @[].mutableCopy;
+    [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"About Zenith Launcher"
+                                 imageName:@"info.circle.fill" action:^{
+        [contentNavigationController setViewControllers:@[[LauncherNewsViewController new]] animated:NO];
+    }]];
     if (realUIIdiom != UIUserInterfaceIdiomTV) {
         [self.options addObject:(id)[LauncherMenuCustomItem
-                                     title:localize(@"launcher.menu.custom_controls", nil)
-                                     imageName:@"MenuCustomControls" action:^{
+                                     title:@"Manage Control Layouts"
+                                     imageName:@"slider.horizontal.3" action:^{
             [contentNavigationController performSelector:@selector(enterCustomControls)];
         }]];
     }
+    [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"Open Main Directory"
+                                 imageName:@"folder.fill" action:^{
+        [contentNavigationController setViewControllers:@[[LauncherPrefGameDirViewController new]] animated:NO];
+    }]];
     [self.options addObject:
      (id)[LauncherMenuCustomItem
-          title:localize(@"launcher.menu.execute_jar", nil)
-          imageName:@"MenuInstallJar" action:^{
+          title:@"Execute .jar"
+          imageName:@"shippingbox.fill" action:^{
         [contentNavigationController performSelector:@selector(enterModInstaller)];
+    }]];
+    [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"Settings"
+                                 imageName:@"gearshape.fill" action:^{
+        [weakSelf actionOpenSettings];
     }]];
     
     // TODO: Finish log-uploading service integration
     [self.options addObject:
      (id)[LauncherMenuCustomItem
-          title:localize(@"login.menu.sendlogs", nil)
+          title:@"Share Log Files"
           imageName:@"square.and.arrow.up" action:^{
-        NSString *latestlogPath = [NSString stringWithFormat:@"file://%s/latestlog.old.txt", getenv("POJAV_HOME")];
-        NSLog(@"Path is %@", latestlogPath);
-        UIActivityViewController *activityVC;
-        if (realUIIdiom != UIUserInterfaceIdiomTV) {
-            activityVC = [[UIActivityViewController alloc]
-                          initWithActivityItems:@[[NSURL URLWithString:latestlogPath]]
-                          applicationActivities:nil];
-        } else {
-            dlopen("/System/Library/PrivateFrameworks/SharingUI.framework/SharingUI", RTLD_GLOBAL);
-            activityVC =
-            [[NSClassFromString(@"SFAirDropSharingViewControllerTV") alloc]
-             performSelector:@selector(initWithSharingItems:)
-             withObject:@[[NSURL URLWithString:latestlogPath]]];
-        }
-        activityVC.popoverPresentationController.sourceView = titleView;
-        activityVC.popoverPresentationController.sourceRect = titleView.bounds;
-        [self presentViewController:activityVC animated:YES completion:nil];
+        [weakSelf actionShareLogs];
     }]];
     
     NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
@@ -130,10 +134,11 @@
     
     [self updateAccountInfo];
     
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:1 inSection:0];
-    [self.tableView selectRowAtIndexPath:indexPath animated:YES scrollPosition:UITableViewScrollPositionNone];
-    [self tableView:self.tableView didSelectRowAtIndexPath:indexPath];
-    self.lastSelectedIndex = 1;
+    self.lastSelectedIndex = 0;
+    if (self.options.count > 0) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:0 inSection:0];
+        [self.tableView selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+    }
     
     if (getEntitlementValue(@"get-task-allow")) {
         [self displayProgress:localize(@"login.jit.checking", nil)];
@@ -183,6 +188,8 @@
 
 - (void)restoreHighlightedSelection {
     // Restore the selected row when the view appears again
+    if (self.options.count == 0) return;
+    self.lastSelectedIndex = MAX(0, MIN(self.lastSelectedIndex, (int)self.options.count-1));
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.lastSelectedIndex inSection:0];
     [self.tableView selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
 }
@@ -227,8 +234,9 @@
     LauncherMenuCustomItem *selected = self.options[indexPath.row];
     
     if (selected.action != nil) {
-        [self restoreHighlightedSelection];
+        self.lastSelectedIndex = (int)indexPath.row;
         ((LauncherMenuCustomItem *)selected).action();
+        [self restoreHighlightedSelection];
     } else {
         if(self.isInitialVc) {
             self.isInitialVc = NO;
@@ -241,6 +249,38 @@
         selected.vcArray[0].navigationItem.leftBarButtonItem = self.splitViewController.displayModeButtonItem;
         selected.vcArray[0].navigationItem.leftItemsSupplementBackButton = true;
     }
+}
+
+- (void)actionShareLogs {
+    NSString *latestlogPath = [NSString stringWithFormat:@"file://%s/latestlog.old.txt", getenv("POJAV_HOME")];
+    NSLog(@"Path is %@", latestlogPath);
+    UIActivityViewController *activityVC;
+    if (realUIIdiom != UIUserInterfaceIdiomTV) {
+        activityVC = [[UIActivityViewController alloc]
+                      initWithActivityItems:@[[NSURL URLWithString:latestlogPath]]
+                      applicationActivities:nil];
+    } else {
+        dlopen("/System/Library/PrivateFrameworks/SharingUI.framework/SharingUI", RTLD_GLOBAL);
+        activityVC =
+        [[NSClassFromString(@"SFAirDropSharingViewControllerTV") alloc]
+         performSelector:@selector(initWithSharingItems:)
+         withObject:@[[NSURL URLWithString:latestlogPath]]];
+    }
+    activityVC.popoverPresentationController.sourceView = self.view;
+    activityVC.popoverPresentationController.sourceRect = self.view.bounds;
+    [self presentViewController:activityVC animated:YES completion:nil];
+}
+
+- (void)actionQuickInstallJar {
+    [contentNavigationController performSelector:@selector(enterModInstaller)];
+}
+
+- (void)actionOpenSettings {
+    LauncherPreferencesViewController *vc = [LauncherPreferencesViewController new];
+    [contentNavigationController setViewControllers:@[vc] animated:NO];
+    vc.navigationItem.rightBarButtonItem = self.accountBtnItem;
+    vc.navigationItem.leftBarButtonItem = self.splitViewController.displayModeButtonItem;
+    vc.navigationItem.leftItemsSupplementBackButton = YES;
 }
 
 - (void)selectAccount:(UIButton *)sender {
