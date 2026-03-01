@@ -211,9 +211,9 @@ static void PLStyleTextField(UITextField *field) {
 
     BOOL wasStyled = [objc_getAssociatedObject(field, kThemeTextFieldStyledKey) boolValue];
     field.borderStyle = UITextBorderStyleNone;
-    field.backgroundColor = [PLThemeBlendColor([UIColor colorWithRed:13.0/255.0 green:25.0/255.0 blue:45.0/255.0 alpha:0.88]
-                                              PLThemeAccentColor()
-                                              0.10] colorWithAlphaComponent:0.92];
+    field.backgroundColor = [PLThemeBlendColor([UIColor colorWithRed:13.0/255.0 green:25.0/255.0 blue:45.0/255.0 alpha:0.88],
+                                               PLThemeAccentColor(),
+                                               0.10) colorWithAlphaComponent:0.92];
     field.layer.cornerRadius = 10.0;
     field.layer.borderWidth = 1.0;
     field.layer.borderColor = [PLThemeAccentColor() colorWithAlphaComponent:0.4].CGColor;
