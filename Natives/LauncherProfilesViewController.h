@@ -2,5 +2,7 @@
 
 @interface LauncherProfilesViewController : UITableViewController
 
++ (instancetype)playController;
+
 @end
 

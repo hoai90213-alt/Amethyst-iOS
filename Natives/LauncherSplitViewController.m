@@ -24,7 +24,7 @@ extern NSMutableDictionary *prefDict;
     self.delegate = self;
 
     UINavigationController *masterVc = [[UINavigationController alloc] initWithRootViewController:[[LauncherMenuViewController alloc] init]];
-    LauncherNavigationController *detailVc = [[LauncherNavigationController alloc] initWithRootViewController:[[LauncherProfilesViewController alloc] init]];
+    LauncherNavigationController *detailVc = [[LauncherNavigationController alloc] initWithRootViewController:[LauncherProfilesViewController playController]];
     detailVc.toolbarHidden = YES;
 
     self.viewControllers = @[masterVc, detailVc];

@@ -71,6 +71,11 @@
     __weak LauncherMenuViewController *weakSelf = self;
     self.options = @[].mutableCopy;
     [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"Play"
+                                 imageName:@"play.circle.fill" action:^{
+        [contentNavigationController setViewControllers:@[[LauncherProfilesViewController playController]] animated:NO];
+    }]];
+    [self.options addObject:(id)[LauncherMenuCustomItem
                                  title:@"Profiles"
                                  imageName:@"person.crop.square.fill" action:^{
         [contentNavigationController setViewControllers:@[[LauncherProfilesViewController new]] animated:NO];

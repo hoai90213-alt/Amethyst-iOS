@@ -1,4 +1,5 @@
 #import <QuartzCore/QuartzCore.h>
+#import <WebKit/WebKit.h>
 #import "authenticator/BaseAuthenticator.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNavigationController.h"
@@ -37,13 +38,16 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
 @property(nonatomic) UILabel *heroTitleLabel;
 @property(nonatomic) UILabel *heroSubtitleLabel;
 @property(nonatomic) UILabel *heroMetaLabel;
+@property(nonatomic) UIButton *profileButton;
 @property(nonatomic) UIButton *versionButton;
 @property(nonatomic) UIButton *launchButton;
-@property(nonatomic) UIButton *editButton;
-@property(nonatomic) UIButton *directoryButton;
 @property(nonatomic) UIProgressView *launchProgressView;
 @property(nonatomic) UILabel *launchStatusLabel;
 @property(nonatomic) BOOL launchTaskActive;
+@property(nonatomic) BOOL playMode;
+@property(nonatomic) WKWebView *skinWebView;
+@property(nonatomic) BOOL skinWebViewReady;
+@property(nonatomic) NSString *pendingSkinURL;
 
 @end
 
@@ -60,6 +64,13 @@ static UIColor *ZenithBorderColor(void) {
 
 static UIColor *ZenithAccentColor(void) {
     return PLThemeAccentResolvedColor();
+}
+
++ (instancetype)playController {
+    LauncherProfilesViewController *vc = [LauncherProfilesViewController new];
+    vc.playMode = YES;
+    vc.title = localize(@"Play", nil);
+    return vc;
 }
 
 - (instancetype)init {
@@ -85,19 +96,32 @@ static UIColor *ZenithAccentColor(void) {
     self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 12, 0);
 
     [self buildCreateButton];
-    [self buildDashboardHeader];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(handlePlayStateChanged:) name:LauncherPlayStateDidChangeNotification object:nil];
+    if (self.playMode) {
+        self.tableView.scrollEnabled = NO;
+        self.tableView.sectionHeaderHeight = 0.0;
+        self.tableView.sectionFooterHeight = 0.0;
+        [self buildDashboardHeader];
+        [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(handlePlayStateChanged:) name:LauncherPlayStateDidChangeNotification object:nil];
+    } else {
+        self.tableView.tableHeaderView = nil;
+    }
 }
 
 - (void)dealloc {
-    [NSNotificationCenter.defaultCenter removeObserver:self name:LauncherPlayStateDidChangeNotification object:nil];
+    if (self.playMode) {
+        [NSNotificationCenter.defaultCenter removeObserver:self name:LauncherPlayStateDidChangeNotification object:nil];
+    }
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
 
     UIBarButtonItem *accountItem = [sidebarViewController drawAccountButton];
-    if (accountItem != nil && self.createButtonItem != nil) {
+    if (self.playMode) {
+        if (accountItem != nil) {
+            self.navigationItem.rightBarButtonItems = @[accountItem];
+        }
+    } else if (accountItem != nil && self.createButtonItem != nil) {
         self.navigationItem.rightBarButtonItems = @[accountItem, self.createButtonItem];
     } else if (self.createButtonItem != nil) {
         self.navigationItem.rightBarButtonItems = @[self.createButtonItem];
@@ -107,11 +131,13 @@ static UIColor *ZenithAccentColor(void) {
 
     [PLProfiles updateCurrent];
     [self normalizeSelectedProfileIfNeeded];
-    [self refreshDashboardContent];
-    if (!self.launchTaskActive) {
-        self.launchStatusLabel.text = @"Ready";
-        self.launchProgressView.hidden = YES;
-        [self.launchProgressView setProgress:0.0f animated:NO];
+    if (self.playMode) {
+        [self refreshDashboardContent];
+        if (!self.launchTaskActive) {
+            self.launchStatusLabel.text = @"Ready";
+            self.launchProgressView.hidden = YES;
+            [self.launchProgressView setProgress:0.0f animated:NO];
+        }
     }
     [self.tableView reloadData];
 
@@ -122,7 +148,9 @@ static UIColor *ZenithAccentColor(void) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    [self layoutDashboardHeader];
+    if (self.playMode) {
+        [self layoutDashboardHeader];
+    }
 }
 
 - (void)buildCreateButton {
@@ -156,7 +184,7 @@ static UIColor *ZenithAccentColor(void) {
 }
 
 - (void)buildDashboardHeader {
-    self.dashboardHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 392.0)];
+    self.dashboardHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 430.0)];
     self.dashboardHeaderView.backgroundColor = UIColor.clearColor;
 
     self.heroCardView = [[UIView alloc] initWithFrame:CGRectZero];
@@ -179,7 +207,28 @@ static UIColor *ZenithAccentColor(void) {
     self.heroImageView.layer.borderWidth = 1.0;
     self.heroImageView.layer.borderColor = [ZenithAccentColor() colorWithAlphaComponent:0.65].CGColor;
     self.heroImageView.clipsToBounds = YES;
+    self.heroImageView.hidden = YES;
     [self.heroCardView addSubview:self.heroImageView];
+
+    WKWebViewConfiguration *config = [[WKWebViewConfiguration alloc] init];
+    self.skinWebView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:config];
+    self.skinWebView.opaque = NO;
+    self.skinWebView.backgroundColor = UIColor.clearColor;
+    self.skinWebView.scrollView.scrollEnabled = NO;
+    self.skinWebView.layer.cornerRadius = 16.0;
+    self.skinWebView.layer.borderWidth = 1.0;
+    self.skinWebView.layer.borderColor = [ZenithAccentColor() colorWithAlphaComponent:0.65].CGColor;
+    self.skinWebView.clipsToBounds = YES;
+    [self.heroCardView addSubview:self.skinWebView];
+
+    [self.skinWebView loadHTMLString:[self skinViewerHTML] baseURL:nil];
+    self.skinWebViewReady = NO;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        self.skinWebViewReady = YES;
+        if (self.pendingSkinURL.length > 0) {
+            [self updateSkinWebViewWithURL:self.pendingSkinURL];
+        }
+    });
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroTitleLabel.font = [UIFont systemFontOfSize:20.0 weight:UIFontWeightHeavy];
@@ -201,6 +250,10 @@ static UIColor *ZenithAccentColor(void) {
     self.heroMetaLabel.textAlignment = NSTextAlignmentCenter;
     [self.heroCardView addSubview:self.heroMetaLabel];
 
+    self.profileButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.profileButton addTarget:self action:@selector(actionPickProfile:) forControlEvents:UIControlEventPrimaryActionTriggered];
+    [self.heroCardView addSubview:self.profileButton];
+
     self.versionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.versionButton addTarget:self action:@selector(actionPickVersion:) forControlEvents:UIControlEventPrimaryActionTriggered];
     [self.heroCardView addSubview:self.versionButton];
@@ -209,16 +262,6 @@ static UIColor *ZenithAccentColor(void) {
     [self.launchButton setTitle:localize(@"Play", nil) forState:UIControlStateNormal];
     [self.launchButton addTarget:self action:@selector(actionLaunchSelectedProfile:) forControlEvents:UIControlEventPrimaryActionTriggered];
     [self.heroCardView addSubview:self.launchButton];
-
-    self.editButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [self.editButton setTitle:@"Edit" forState:UIControlStateNormal];
-    [self.editButton addTarget:self action:@selector(actionEditSelectedProfile:) forControlEvents:UIControlEventPrimaryActionTriggered];
-    [self.heroCardView addSubview:self.editButton];
-
-    self.directoryButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [self.directoryButton setTitle:@"Directory" forState:UIControlStateNormal];
-    [self.directoryButton addTarget:self action:@selector(actionOpenGameDirectory:) forControlEvents:UIControlEventPrimaryActionTriggered];
-    [self.heroCardView addSubview:self.directoryButton];
 
     self.launchProgressView = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
     self.launchProgressView.trackTintColor = [UIColor colorWithWhite:1.0 alpha:0.15];
@@ -233,6 +276,12 @@ static UIColor *ZenithAccentColor(void) {
     self.launchStatusLabel.numberOfLines = 1;
     self.launchStatusLabel.text = @"Ready";
     [self.heroCardView addSubview:self.launchStatusLabel];
+
+    UIButton *openProfilesButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [openProfilesButton setTitle:@"Open Profiles" forState:UIControlStateNormal];
+    [openProfilesButton addTarget:self action:@selector(actionOpenProfilesScreen:) forControlEvents:UIControlEventPrimaryActionTriggered];
+    openProfilesButton.tag = 99101;
+    [self.heroCardView addSubview:openProfilesButton];
 
     self.tableView.tableHeaderView = self.dashboardHeaderView;
     [self refreshDashboardContent];
@@ -249,7 +298,7 @@ static UIColor *ZenithAccentColor(void) {
     }
 
     CGFloat horizontalPadding = 16.0;
-    CGFloat heroHeight = 370.0;
+    CGFloat heroHeight = 408.0;
     CGFloat heroWidth = MAX(0.0, tableWidth - horizontalPadding * 2.0);
 
     self.dashboardHeaderView.frame = CGRectMake(0, 0, tableWidth, heroHeight + 14.0);
@@ -257,6 +306,7 @@ static UIColor *ZenithAccentColor(void) {
 
     CGFloat imageSize = MIN(heroWidth - 72.0, 170.0);
     self.heroImageView.frame = CGRectMake((heroWidth - imageSize) / 2.0, 18.0, imageSize, imageSize + 24.0);
+    self.skinWebView.frame = self.heroImageView.frame;
 
     CGFloat textWidth = MAX(120.0, heroWidth - 28.0);
     self.heroTitleLabel.frame = CGRectMake(14.0, CGRectGetMaxY(self.heroImageView.frame) + 10.0, textWidth, 24.0);
@@ -264,23 +314,16 @@ static UIColor *ZenithAccentColor(void) {
     self.heroMetaLabel.frame = CGRectMake(14.0, CGRectGetMaxY(self.heroSubtitleLabel.frame) + 1.0, textWidth, 17.0);
 
     CGFloat contentWidth = MAX(0.0, heroWidth - 32.0);
-    self.versionButton.frame = CGRectMake(16.0, CGRectGetMaxY(self.heroMetaLabel.frame) + 10.0, contentWidth, 34.0);
+    CGFloat buttonWidth = floor((contentWidth - 8.0) / 2.0);
+    self.profileButton.frame = CGRectMake(16.0, CGRectGetMaxY(self.heroMetaLabel.frame) + 10.0, buttonWidth, 34.0);
+    self.versionButton.frame = CGRectMake(CGRectGetMaxX(self.profileButton.frame) + 8.0, CGRectGetMinY(self.profileButton.frame), buttonWidth, 34.0);
 
-    self.launchProgressView.frame = CGRectMake(16.0, CGRectGetMaxY(self.versionButton.frame) + 10.0, contentWidth, 4.0);
+    self.launchButton.frame = CGRectMake(16.0, CGRectGetMaxY(self.versionButton.frame) + 10.0, contentWidth, 40.0);
+    self.launchProgressView.frame = CGRectMake(16.0, CGRectGetMaxY(self.launchButton.frame) + 12.0, contentWidth, 4.0);
     self.launchStatusLabel.frame = CGRectMake(16.0, CGRectGetMaxY(self.launchProgressView.frame) + 5.0, contentWidth, 16.0);
 
-    CGFloat controlY = CGRectGetMaxY(self.launchStatusLabel.frame) + 8.0;
-    CGFloat launchWidth = floor(contentWidth * 0.58);
-    CGFloat sideWidth = floor((contentWidth - launchWidth - 8.0) / 2.0);
-    CGFloat minSideWidth = 84.0;
-    if (sideWidth < minSideWidth) {
-        sideWidth = minSideWidth;
-        launchWidth = MAX(120.0, contentWidth - (sideWidth * 2.0) - 8.0);
-    }
-
-    self.launchButton.frame = CGRectMake(16.0, controlY, launchWidth, 38.0);
-    self.editButton.frame = CGRectMake(CGRectGetMaxX(self.launchButton.frame) + 4.0, controlY, sideWidth, 38.0);
-    self.directoryButton.frame = CGRectMake(CGRectGetMaxX(self.editButton.frame) + 4.0, controlY, sideWidth, 38.0);
+    UIButton *openProfilesButton = [self.heroCardView viewWithTag:99101];
+    openProfilesButton.frame = CGRectMake(16.0, CGRectGetMaxY(self.launchStatusLabel.frame) + 9.0, contentWidth, 30.0);
 
     [self styleHeroButtons];
 
@@ -290,9 +333,8 @@ static UIColor *ZenithAccentColor(void) {
 }
 
 - (void)styleHeroButtons {
+    [self styleSecondaryButton:self.profileButton symbol:@"person.crop.square"];
     [self styleSecondaryButton:self.versionButton symbol:@"shippingbox"];
-    [self styleSecondaryButton:self.editButton symbol:@"square.and.pencil"];
-    [self styleSecondaryButton:self.directoryButton symbol:@"folder"];
 
     self.launchButton.layer.cornerRadius = 10.0;
     self.launchButton.layer.borderWidth = 1.0;
@@ -327,6 +369,10 @@ static UIColor *ZenithAccentColor(void) {
     ];
     gradient.frame = self.launchButton.bounds;
     gradient.cornerRadius = self.launchButton.layer.cornerRadius;
+
+    UIButton *openProfilesButton = [self.heroCardView viewWithTag:99101];
+    [self styleSecondaryButton:openProfilesButton symbol:@"list.bullet.rectangle.portrait"];
+    openProfilesButton.titleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
 }
 
 - (void)styleSecondaryButton:(UIButton *)button symbol:(NSString *)symbol {
@@ -351,6 +397,48 @@ static UIColor *ZenithAccentColor(void) {
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
+}
+
+- (NSString *)skinViewerHTML {
+    return @"<!doctype html><html><head><meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' /><style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent;}#skin_container{width:100%;height:100%;touch-action:none;}</style></head><body><canvas id='skin_container'></canvas><script src='https://unpkg.com/skinview3d@3.3.0/bundles/skinview3d.bundle.js'></script><script>let viewer=null;let controls=null;function init(){const canvas=document.getElementById('skin_container');viewer=new skinview3d.SkinViewer({canvas:canvas,width:canvas.clientWidth||260,height:canvas.clientHeight||260,skin:'https://crafatar.com/skins/8667ba71b85a4004af54457a9734eed7'});viewer.fov=60;viewer.zoom=0.78;viewer.autoRotate=true;viewer.autoRotateSpeed=0.75;controls=skinview3d.createOrbitControls(viewer);controls.enableRotate=true;controls.enableZoom=false;controls.enablePan=false;controls.rotateSpeed=0.7;window.addEventListener('resize',()=>{if(!viewer)return;viewer.width=canvas.clientWidth||260;viewer.height=canvas.clientHeight||260;});if(window.pendingSkinUrl){viewer.loadSkin(window.pendingSkinUrl);}}function updateSkin(url){window.pendingSkinUrl=url;if(!viewer)return;viewer.loadSkin(url);}init();window.updateSkin=updateSkin;</script></body></html>";
+}
+
+- (NSString *)escapedForJavaScript:(NSString *)value {
+    if (![value isKindOfClass:NSString.class]) {
+        return @"";
+    }
+    NSString *escaped = [value stringByReplacingOccurrencesOfString:@"\\" withString:@"\\\\"];
+    escaped = [escaped stringByReplacingOccurrencesOfString:@"'" withString:@"\\'"];
+    escaped = [escaped stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+    escaped = [escaped stringByReplacingOccurrencesOfString:@"\r" withString:@""];
+    return escaped;
+}
+
+- (NSString *)skinURLForCurrentAccount {
+    NSDictionary *account = BaseAuthenticator.current.authData;
+    NSString *profileId = [account isKindOfClass:NSDictionary.class] ? account[@"profileId"] : nil;
+    if (![profileId isKindOfClass:NSString.class] || profileId.length == 0 || [profileId isEqualToString:@"00000000-0000-0000-0000-000000000000"]) {
+        return @"https://crafatar.com/skins/8667ba71b85a4004af54457a9734eed7";
+    }
+    NSString *uuidNoDash = [[profileId stringByReplacingOccurrencesOfString:@"-" withString:@""] lowercaseString];
+    if (uuidNoDash.length == 0) {
+        uuidNoDash = @"8667ba71b85a4004af54457a9734eed7";
+    }
+    return [NSString stringWithFormat:@"https://crafatar.com/skins/%@", uuidNoDash];
+}
+
+- (void)updateSkinWebViewWithURL:(NSString *)skinURL {
+    if (skinURL.length == 0) {
+        return;
+    }
+    self.pendingSkinURL = skinURL;
+    if (!self.skinWebViewReady || self.skinWebView == nil) {
+        return;
+    }
+
+    NSString *escaped = [self escapedForJavaScript:skinURL];
+    NSString *script = [NSString stringWithFormat:@"window.pendingSkinUrl='%@'; if(window.updateSkin){window.updateSkin(window.pendingSkinUrl);} ", escaped];
+    [self.skinWebView evaluateJavaScript:script completionHandler:nil];
 }
 
 - (NSArray<NSDictionary *> *)profileEntries {
@@ -453,15 +541,14 @@ static UIColor *ZenithAccentColor(void) {
         self.heroSubtitleLabel.text = @"No profile selected";
         self.heroMetaLabel.text = localize(@"profile.section.profiles", nil);
         self.heroImageView.image = placeholder;
+        [self.profileButton setTitle:@"Profile: -" forState:UIControlStateNormal];
         [self.versionButton setTitle:@"Version: -" forState:UIControlStateNormal];
         self.launchButton.enabled = NO;
-        self.editButton.enabled = NO;
-        self.directoryButton.enabled = NO;
+        [self updateSkinWebViewWithURL:[self skinURLForCurrentAccount]];
         return;
     }
 
     NSDictionary *profile = [self entryProfile:selected];
-    NSDictionary *account = BaseAuthenticator.current.authData;
     NSString *name = [self entryDisplayName:selected];
     NSString *version = profile[@"lastVersionId"];
     if (![version isKindOfClass:NSString.class] || version.length == 0) {
@@ -471,24 +558,10 @@ static UIColor *ZenithAccentColor(void) {
     self.heroTitleLabel.text = name;
     self.heroSubtitleLabel.text = @"Ready to launch";
     self.heroMetaLabel.text = [NSString stringWithFormat:@"%@: %lu", localize(@"profile.section.profiles", nil), (unsigned long)entries.count];
+    [self.profileButton setTitle:[NSString stringWithFormat:@"Profile: %@", name] forState:UIControlStateNormal];
     [self.versionButton setTitle:[NSString stringWithFormat:@"Version: %@", version] forState:UIControlStateNormal];
-
-    NSString *profileId = [account isKindOfClass:NSDictionary.class] ? account[@"profileId"] : nil;
-    if ([profileId isKindOfClass:NSString.class] && profileId.length > 0 && ![profileId isEqualToString:@"00000000-0000-0000-0000-000000000000"]) {
-        NSString *body3DUrl = [NSString stringWithFormat:@"https://mc-heads.net/body/%@/right", profileId];
-        [self.heroImageView setImageWithURL:[NSURL URLWithString:body3DUrl] placeholderImage:placeholder];
-    } else {
-        NSString *iconURLString = profile[@"icon"];
-        if ([iconURLString isKindOfClass:NSString.class] && iconURLString.length > 0) {
-            [self.heroImageView setImageWithURL:[NSURL URLWithString:iconURLString] placeholderImage:placeholder];
-        } else {
-            self.heroImageView.image = placeholder;
-        }
-    }
-
+    [self updateSkinWebViewWithURL:[self skinURLForCurrentAccount]];
     self.launchButton.enabled = YES;
-    self.editButton.enabled = YES;
-    self.directoryButton.enabled = YES;
 }
 
 - (void)setSelectedProfileWithEntry:(NSDictionary *)entry {
@@ -578,6 +651,9 @@ static UIColor *ZenithAccentColor(void) {
 }
 
 - (void)handlePlayStateChanged:(NSNotification *)notification {
+    if (!self.playMode || self.launchProgressView == nil) {
+        return;
+    }
     NSDictionary *userInfo = notification.userInfo;
     BOOL active = [userInfo[@"active"] boolValue];
     NSString *text = [userInfo[@"text"] isKindOfClass:NSString.class] ? userInfo[@"text"] : nil;
@@ -635,6 +711,42 @@ static UIColor *ZenithAccentColor(void) {
         return;
     }
     [self actionEditProfile:[self entryProfile:selected]];
+}
+
+- (void)actionPickProfile:(id)sender {
+    (void)sender;
+    NSArray<NSDictionary *> *entries = [self profileEntries];
+    if (entries.count == 0) {
+        return;
+    }
+
+    NSDictionary *selected = [self selectedProfileEntry];
+    NSString *selectedKey = [self entryKey:selected];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Select profile"
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+
+    NSInteger maxItems = MIN((NSInteger)entries.count, 18);
+    for (NSInteger i = 0; i < maxItems; i++) {
+        NSDictionary *entry = entries[i];
+        NSString *entryKey = [self entryKey:entry];
+        NSString *entryName = [self entryDisplayName:entry];
+        NSString *title = [entryKey isEqualToString:selectedKey] ? [NSString stringWithFormat:@"%@ (current)", entryName] : entryName;
+        UIAlertAction *action = [UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *alertAction) {
+            (void)alertAction;
+            [self setSelectedProfileWithEntry:entry];
+            [self refreshDashboardContent];
+        }];
+        [sheet addAction:action];
+    }
+
+    [sheet addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+    UIPopoverPresentationController *popover = sheet.popoverPresentationController;
+    if (popover != nil) {
+        popover.sourceView = self.profileButton;
+        popover.sourceRect = self.profileButton.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
 }
 
 - (void)actionPickVersion:(id)sender {
@@ -698,6 +810,14 @@ static UIColor *ZenithAccentColor(void) {
     [self.navigationController pushViewController:[LauncherPrefGameDirViewController new] animated:YES];
 }
 
+- (void)actionOpenProfilesScreen:(id)sender {
+    (void)sender;
+    LauncherProfilesViewController *vc = [LauncherProfilesViewController new];
+    vc.navigationItem.leftBarButtonItem = self.splitViewController.displayModeButtonItem;
+    vc.navigationItem.leftItemsSupplementBackButton = YES;
+    [self.navigationController setViewControllers:@[vc] animated:YES];
+}
+
 - (void)actionLaunchSelectedProfile:(id)sender {
     NSDictionary *selected = [self selectedProfileEntry];
     if (selected == nil) {
@@ -709,7 +829,8 @@ static UIColor *ZenithAccentColor(void) {
     [self.launchProgressView setProgress:0.02f animated:NO];
     if ([self.navigationController isKindOfClass:LauncherNavigationController.class]) {
         LauncherNavigationController *nav = (LauncherNavigationController *)self.navigationController;
-        [nav launchMinecraft:sender];
+        id trigger = [sender isKindOfClass:UIButton.class] ? sender : self.launchButton;
+        [nav launchMinecraft:trigger];
     }
 }
 
@@ -722,11 +843,17 @@ static UIColor *ZenithAccentColor(void) {
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     (void)tableView;
+    if (self.playMode) {
+        return 0;
+    }
     return 2;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     (void)tableView;
+    if (self.playMode) {
+        return nil;
+    }
     if (section == LauncherProfilesTableSectionInstance) {
         return localize(@"profile.section.instance", nil);
     }
@@ -735,6 +862,9 @@ static UIColor *ZenithAccentColor(void) {
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     (void)tableView;
+    if (self.playMode) {
+        return 0;
+    }
     if (section == LauncherProfilesTableSectionInstance) {
         return 5;
     }
