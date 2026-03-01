@@ -532,40 +532,67 @@ static UIColor *ZenithAccentColor(void) {
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     (void)tableView;
     if (section == LauncherProfilesTableSectionInstance) {
-        return 2;
+        return 5;
     }
     return [self profileEntries].count;
 }
 
 - (void)configureInstanceCell:(UITableViewCell *)cell atRow:(NSInteger)row {
-    cell.userInteractionEnabled = !getenv("DEMO_LOCK");
+    BOOL demoLocked = getenv("DEMO_LOCK") != NULL;
+    cell.userInteractionEnabled = YES;
     cell.imageView.tintColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.accessoryView = nil;
 
     if (row == 0) {
+        cell.userInteractionEnabled = !demoLocked;
         cell.imageView.image = [UIImage systemImageNamed:@"folder"];
         cell.textLabel.text = localize(@"preference.title.game_directory", nil);
-        cell.detailTextLabel.text = getenv("DEMO_LOCK") ? @".demo" : getPrefObject(@"general.game_directory");
+        cell.detailTextLabel.text = demoLocked ? @".demo" : getPrefObject(@"general.game_directory");
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         return;
     }
 
-    NSString *imageName;
-    if (@available(iOS 15.0, *)) {
-        imageName = @"folder.badge.gearshape";
-    } else {
-        imageName = @"folder.badge.gear";
+    if (row == 1) {
+        cell.userInteractionEnabled = !demoLocked;
+        NSString *imageName;
+        if (@available(iOS 15.0, *)) {
+            imageName = @"folder.badge.gearshape";
+        } else {
+            imageName = @"folder.badge.gear";
+        }
+        cell.imageView.image = [UIImage systemImageNamed:imageName];
+        cell.textLabel.text = localize(@"profile.title.separate_preference", nil);
+        cell.detailTextLabel.text = localize(@"profile.detail.separate_preference", nil);
+        UISwitch *switchView = [UISwitch new];
+        [switchView setOn:getPrefBool(@"internal.isolated") animated:NO];
+        [switchView addTarget:self action:@selector(actionTogglePrefIsolation:) forControlEvents:UIControlEventValueChanged];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        cell.accessoryView = switchView;
+        return;
     }
-    cell.imageView.image = [UIImage systemImageNamed:imageName];
-    cell.textLabel.text = localize(@"profile.title.separate_preference", nil);
-    cell.detailTextLabel.text = localize(@"profile.detail.separate_preference", nil);
-    UISwitch *switchView = [UISwitch new];
-    [switchView setOn:getPrefBool(@"internal.isolated") animated:NO];
-    [switchView addTarget:self action:@selector(actionTogglePrefIsolation:) forControlEvents:UIControlEventValueChanged];
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.accessoryView = switchView;
+
+    if (row == 2) {
+        cell.imageView.image = [UIImage systemImageNamed:@"shippingbox.circle"];
+        cell.textLabel.text = @"Install Fabric/Quilt";
+        cell.detailTextLabel.text = @"Create profile from Fabric or Quilt loader";
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        return;
+    }
+
+    if (row == 3) {
+        cell.imageView.image = [UIImage systemImageNamed:@"flame.fill"];
+        cell.textLabel.text = @"Install Forge";
+        cell.detailTextLabel.text = @"Create profile from Minecraft Forge";
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        return;
+    }
+
+    cell.imageView.image = [UIImage systemImageNamed:@"square.stack.3d.up.fill"];
+    cell.textLabel.text = @"Install Modpack";
+    cell.detailTextLabel.text = @"Install Modrinth/CurseForge modpack";
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
 }
 
 - (void)configureProfileCell:(UITableViewCell *)cell atRow:(NSInteger)row {
@@ -634,6 +661,12 @@ static UIColor *ZenithAccentColor(void) {
     if (indexPath.section == LauncherProfilesTableSectionInstance) {
         if (indexPath.row == 0) {
             [self.navigationController pushViewController:[LauncherPrefGameDirViewController new] animated:YES];
+        } else if (indexPath.row == 2) {
+            [self actionCreateFabricProfile];
+        } else if (indexPath.row == 3) {
+            [self actionCreateForgeProfile];
+        } else if (indexPath.row == 4) {
+            [self actionCreateModpackProfile];
         }
         return;
     }
