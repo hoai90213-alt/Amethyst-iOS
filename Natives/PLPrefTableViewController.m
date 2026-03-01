@@ -188,7 +188,7 @@
         view.delegate = weakSelf;
         //view.nonEditingLinebreakMode = NSLineBreakByCharWrapping;
         view.returnKeyType = UIReturnKeyDone;
-        view.textAlignment = NSTextAlignmentRight;
+        view.textAlignment = NSTextAlignmentLeft;
         view.placeholder = localize((item[@"placeholder"] ? item[@"placeholder"] :
             [NSString stringWithFormat:@"preference.placeholder.%@", key]), nil);
         view.text = weakSelf.getPreference(section, key);
@@ -417,9 +417,11 @@
         invokeAction();
     }
 
-    UIView *view = [self.tableView cellForRowAtIndexPath:indexPath];
-    NSString *title = localize(([NSString stringWithFormat:@"preference.title.done.%@", key]), nil);
-    [self showAlertOnView:view title:title message:nil];
+    if (![item[@"suppressDonePrompt"] boolValue]) {
+        UIView *view = [self.tableView cellForRowAtIndexPath:indexPath];
+        NSString *title = localize(([NSString stringWithFormat:@"preference.title.done.%@", key]), nil);
+        [self showAlertOnView:view title:title message:nil];
+    }
 }
 
 #pragma mark UITextField

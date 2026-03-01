@@ -28,7 +28,66 @@ static void *kThemeCellSelectedKey = &kThemeCellSelectedKey;
 @end
 
 static UIColor *PLThemeAccentColor(void) {
-    return [UIColor colorWithRed:19.0/255.0 green:212.0/255.0 blue:1.0 alpha:1.0];
+    static UIColor *fallbackColor = nil;
+    if (fallbackColor == nil) {
+        fallbackColor = [UIColor colorWithRed:19.0/255.0 green:212.0/255.0 blue:1.0 alpha:1.0];
+    }
+
+    NSString *hex = getPrefObject(@"general.theme_accent_hex");
+    if (![hex isKindOfClass:NSString.class]) {
+        return fallbackColor;
+    }
+
+    NSString *sanitized = [[hex stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] uppercaseString];
+    if ([sanitized hasPrefix:@"#"]) {
+        sanitized = [sanitized substringFromIndex:1];
+    }
+    if (sanitized.length != 6 && sanitized.length != 8) {
+        return fallbackColor;
+    }
+
+    NSCharacterSet *hexCharset = [NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEF"];
+    if ([[sanitized stringByTrimmingCharactersInSet:hexCharset] length] > 0) {
+        return fallbackColor;
+    }
+
+    unsigned long long hexValue = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:sanitized];
+    if (![scanner scanHexLongLong:&hexValue]) {
+        return fallbackColor;
+    }
+
+    CGFloat red;
+    CGFloat green;
+    CGFloat blue;
+    CGFloat alpha = 1.0;
+    if (sanitized.length == 8) {
+        red = ((hexValue >> 24) & 0xFF) / 255.0;
+        green = ((hexValue >> 16) & 0xFF) / 255.0;
+        blue = ((hexValue >> 8) & 0xFF) / 255.0;
+        alpha = (hexValue & 0xFF) / 255.0;
+    } else {
+        red = ((hexValue >> 16) & 0xFF) / 255.0;
+        green = ((hexValue >> 8) & 0xFF) / 255.0;
+        blue = (hexValue & 0xFF) / 255.0;
+    }
+    return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
+}
+
+static UIColor *PLThemeBlendColor(UIColor *base, UIColor *target, CGFloat ratio) {
+    CGFloat baseR = 0.0, baseG = 0.0, baseB = 0.0, baseA = 1.0;
+    CGFloat targetR = 0.0, targetG = 0.0, targetB = 0.0, targetA = 1.0;
+    if (![base getRed:&baseR green:&baseG blue:&baseB alpha:&baseA]) {
+        return base;
+    }
+    if (![target getRed:&targetR green:&targetG blue:&targetB alpha:&targetA]) {
+        return base;
+    }
+    ratio = MAX(0.0, MIN(1.0, ratio));
+    return [UIColor colorWithRed:(baseR + (targetR - baseR) * ratio)
+                           green:(baseG + (targetG - baseG) * ratio)
+                            blue:(baseB + (targetB - baseB) * ratio)
+                           alpha:(baseA + (targetA - baseA) * ratio)];
 }
 
 static UIColor *PLThemeBackgroundStart(UITraitCollection *__unused traits) {
@@ -48,15 +107,16 @@ static UIColor *PLThemeCardColor(UITraitCollection *__unused traits) {
 }
 
 static UIColor *PLThemeCardBorderColor(UITraitCollection *__unused traits) {
-    return [UIColor colorWithRed:85.0/255.0 green:122.0/255.0 blue:170.0/255.0 alpha:0.55];
+    return [PLThemeBlendColor(PLThemeAccentColor(), [UIColor colorWithWhite:0.75 alpha:1.0], 0.5)
+            colorWithAlphaComponent:0.55];
 }
 
 static UIColor *PLThemeButtonGradientStart(void) {
-    return [UIColor colorWithRed:20.0/255.0 green:196.0/255.0 blue:255.0/255.0 alpha:1.0];
+    return PLThemeBlendColor(PLThemeAccentColor(), UIColor.whiteColor, 0.15);
 }
 
 static UIColor *PLThemeButtonGradientEnd(void) {
-    return [UIColor colorWithRed:76.0/255.0 green:110.0/255.0 blue:255.0/255.0 alpha:1.0];
+    return PLThemeBlendColor(PLThemeAccentColor(), [UIColor colorWithRed:24.0/255.0 green:33.0/255.0 blue:52.0/255.0 alpha:1.0], 0.35);
 }
 
 void swizzle(Class class, SEL originalAction, SEL swizzledAction) {
@@ -141,10 +201,11 @@ static CAGradientLayer *PLThemeButtonGradientLayer(UIButton *button) {
 }
 
 static void PLStyleTextField(UITextField *field) {
-    if (!field || objc_getAssociatedObject(field, kThemeTextFieldStyledKey)) {
+    if (!field) {
         return;
     }
 
+    BOOL wasStyled = [objc_getAssociatedObject(field, kThemeTextFieldStyledKey) boolValue];
     field.borderStyle = UITextBorderStyleNone;
     field.backgroundColor = [UIColor colorWithRed:13.0/255.0 green:25.0/255.0 blue:45.0/255.0 alpha:0.88];
     field.layer.cornerRadius = 10.0;
@@ -156,7 +217,7 @@ static void PLStyleTextField(UITextField *field) {
         field.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    if (field.placeholder.length > 0) {
+    if (!wasStyled && field.placeholder.length > 0) {
         field.attributedPlaceholder = [[NSAttributedString alloc] initWithString:field.placeholder attributes:@{
             NSForegroundColorAttributeName: [UIColor colorWithWhite:0.86 alpha:0.58]
         }];
@@ -185,12 +246,12 @@ static void PLStyleButton(UIButton *button) {
         gradient.name = @"pl.theme.button.gradient";
         gradient.startPoint = CGPointMake(0.0, 0.5);
         gradient.endPoint = CGPointMake(1.0, 0.5);
-        gradient.colors = @[
-            (id)PLThemeButtonGradientStart().CGColor,
-            (id)PLThemeButtonGradientEnd().CGColor
-        ];
         [button.layer insertSublayer:gradient atIndex:0];
     }
+    gradient.colors = @[
+        (id)PLThemeButtonGradientStart().CGColor,
+        (id)PLThemeButtonGradientEnd().CGColor
+    ];
     button.layer.cornerRadius = 12.0;
     gradient.frame = button.bounds;
     gradient.cornerRadius = button.layer.cornerRadius;
@@ -301,11 +362,6 @@ static void PLApplyGlobalAppearance(void) {
     self.glowLayer = [CAGradientLayer layer];
     self.glowLayer.startPoint = CGPointMake(0.0, 0.0);
     self.glowLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.glowLayer.colors = @[
-        (id)[[PLThemeAccentColor() colorWithAlphaComponent:0.35] CGColor],
-        (id)[[UIColor colorWithRed:63.0/255.0 green:115.0/255.0 blue:1.0 alpha:0.16] CGColor],
-        (id)[[UIColor clearColor] CGColor]
-    ];
     self.glowLayer.locations = @[@0.0, @0.35, @0.78];
     [self.layer addSublayer:self.glowLayer];
     [self updateColors];
@@ -313,10 +369,17 @@ static void PLApplyGlobalAppearance(void) {
 }
 
 - (void)updateColors {
+    UIColor *accent = PLThemeAccentColor();
     self.gradientLayer.colors = @[
         (id)PLThemeBackgroundStart(self.traitCollection).CGColor,
         (id)PLThemeBackgroundMid(self.traitCollection).CGColor,
         (id)PLThemeBackgroundEnd(self.traitCollection).CGColor
+    ];
+    self.glowLayer.colors = @[
+        (id)[[accent colorWithAlphaComponent:0.34] CGColor],
+        (id)[[PLThemeBlendColor(accent, [UIColor colorWithRed:63.0/255.0 green:115.0/255.0 blue:1.0 alpha:1.0], 0.4)
+              colorWithAlphaComponent:0.18] CGColor],
+        (id)[UIColor.clearColor CGColor]
     ];
 }
 
@@ -538,6 +601,18 @@ void init_hookUIKitConstructor(void) {
     selectedCard.frame = insetBounds;
     selectedCard.layer.cornerRadius = 14.0;
     selectedCard.backgroundColor = [PLThemeAccentColor() colorWithAlphaComponent:0.3];
+
+    CGFloat nudgeLeft = 6.0;
+    if (self.textLabel.text.length > 0) {
+        CGRect textFrame = self.textLabel.frame;
+        textFrame.origin.x = MAX(12.0, textFrame.origin.x - nudgeLeft);
+        self.textLabel.frame = textFrame;
+    }
+    if (self.detailTextLabel.text.length > 0) {
+        CGRect detailFrame = self.detailTextLabel.frame;
+        detailFrame.origin.x = MAX(12.0, detailFrame.origin.x - nudgeLeft);
+        self.detailTextLabel.frame = detailFrame;
+    }
 }
 
 @end
@@ -646,4 +721,25 @@ void init_hookUIKitConstructor(void) {
 
 UIViewController* currentVC() {
     return UIWindow.mainWindow.visibleViewController;
+}
+
+void PLRefreshThemeAppearance(void) {
+    PLApplyGlobalAppearance();
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIColor *accent = PLThemeAccentColor();
+        NSArray *scenes = UIApplication.sharedApplication.connectedScenes.allObjects;
+        for (id sceneObj in scenes) {
+            if (![sceneObj isKindOfClass:UIWindowScene.class]) {
+                continue;
+            }
+            UIWindowScene *scene = (UIWindowScene *)sceneObj;
+            for (UIWindow *window in scene.windows) {
+                window.tintColor = accent;
+                [window setNeedsLayout];
+                [window layoutIfNeeded];
+                [window.rootViewController.view setNeedsLayout];
+                [window.rootViewController.view layoutIfNeeded];
+            }
+        }
+    });
 }

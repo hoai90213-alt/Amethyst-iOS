@@ -16,6 +16,8 @@
 
 @interface LauncherPreferencesViewController()
 @property(nonatomic) NSArray<NSString*> *rendererKeys, *rendererList;
+- (void)promptThemeAccentHex;
+- (NSString *)normalizedThemeAccentHex:(NSString *)raw;
 @end
 
 @implementation LauncherPreferencesViewController
@@ -100,6 +102,16 @@
               @"pickList": @[
                   localize(@"preference.title.appicon-default", nil)
               ]
+            },
+            @{@"key": @"theme_accent_hex",
+              @"title": @"Theme Accent (HEX)",
+              @"icon": @"paintpalette.fill",
+              @"type": self.typeButton,
+              @"enableCondition": whenNotInGame,
+              @"suppressDonePrompt": @YES,
+              @"action": ^void(){
+                  [self promptThemeAccentHex];
+              }
             },
             @{@"key": @"hidden_sidebar",
               @"hasDetail": @YES,
@@ -414,6 +426,66 @@
         [closeButton addTarget:self action:@selector(actionClose) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:closeButton];
     }
+}
+
+- (NSString *)normalizedThemeAccentHex:(NSString *)raw {
+    if (![raw isKindOfClass:NSString.class]) {
+        return nil;
+    }
+    NSString *hex = [[raw stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] uppercaseString];
+    if ([hex hasPrefix:@"#"]) {
+        hex = [hex substringFromIndex:1];
+    }
+    if (hex.length != 6 && hex.length != 8) {
+        return nil;
+    }
+    NSCharacterSet *invalidSet = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789ABCDEF"] invertedSet];
+    if ([hex rangeOfCharacterFromSet:invalidSet].location != NSNotFound) {
+        return nil;
+    }
+    return hex;
+}
+
+- (void)promptThemeAccentHex {
+    NSString *current = getPrefObject(@"general.theme_accent_hex");
+    if (![current isKindOfClass:NSString.class]) {
+        current = @"";
+    }
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Theme Accent Color"
+                                                                   message:@"Nhap ma mau HEX, vi du: #29CEFF hoac 29CEFFFF"
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *textField) {
+        textField.autocorrectionType = UITextAutocorrectionTypeNo;
+        textField.autocapitalizationType = UITextAutocapitalizationTypeAllCharacters;
+        textField.placeholder = @"#29CEFF";
+        textField.text = current.length > 0 ? [@"#" stringByAppendingString:current] : @"";
+    }];
+
+    __weak LauncherPreferencesViewController *weakSelf = self;
+    UIAlertAction *reset = [UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        (void)action;
+        setPrefObject(@"general.theme_accent_hex", @"");
+        PLRefreshThemeAppearance();
+        [weakSelf.tableView reloadData];
+    }];
+    UIAlertAction *cancel = [UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *save = [UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        (void)action;
+        UITextField *field = alert.textFields.firstObject;
+        NSString *hex = [weakSelf normalizedThemeAccentHex:field.text];
+        if (hex == nil) {
+            showDialog(localize(@"Error", nil), @"Ma mau khong hop le. Dung dinh dang RRGGBB hoac RRGGBBAA.");
+            return;
+        }
+        setPrefObject(@"general.theme_accent_hex", hex);
+        PLRefreshThemeAppearance();
+        [weakSelf.tableView reloadData];
+    }];
+    [alert addAction:reset];
+    [alert addAction:cancel];
+    [alert addAction:save];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {

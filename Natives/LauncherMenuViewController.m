@@ -88,7 +88,7 @@
         [contentNavigationController setViewControllers:@[[LauncherPrefManageJREViewController new]] animated:NO];
     }]];
     [self.options addObject:(id)[LauncherMenuCustomItem
-                                 title:@"Account Manager"
+                                 title:@"Account"
                                  imageName:@"person.crop.circle.fill" action:^{
         [weakSelf selectAccount:weakSelf.accountButton];
     }]];
@@ -186,10 +186,16 @@
         self.accountButton = [UIButton buttonWithType:UIButtonTypeCustom];
         [self.accountButton addTarget:self action:@selector(selectAccount:) forControlEvents:UIControlEventPrimaryActionTriggered];
         self.accountButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-
-        self.accountButton.titleEdgeInsets = UIEdgeInsetsMake(0, 4, 0, -4);
+        self.accountButton.frame = CGRectMake(0, 0, 148, 32);
+        self.accountButton.contentEdgeInsets = UIEdgeInsetsMake(2, 2, 2, 6);
+        self.accountButton.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
+        self.accountButton.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 4);
         self.accountButton.imageView.contentMode = UIViewContentModeScaleAspectFit;
-        self.accountButton.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+        self.accountButton.imageView.layer.cornerRadius = 12.0;
+        self.accountButton.imageView.layer.masksToBounds = YES;
+        self.accountButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        self.accountButton.titleLabel.numberOfLines = 1;
+        self.accountButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         self.accountBtnItem = [[UIBarButtonItem alloc] initWithCustomView:self.accountButton];
     }
 
@@ -325,22 +331,19 @@
 
 - (void)updateAccountInfo {
     NSDictionary *selected = BaseAuthenticator.current.authData;
-    CGSize size = CGSizeMake(contentNavigationController.view.frame.size.width, contentNavigationController.view.frame.size.height);
+    UIImage *placeholder = [[UIImage imageNamed:@"DefaultAccount"] _imageWithSize:CGSizeMake(24, 24)];
+    NSString *titleText = localize(@"login.option.select", nil);
     
     if (selected == nil) {
-        if((size.width / 3) > 200) {
-            [self.accountButton setAttributedTitle:[[NSAttributedString alloc] initWithString:localize(@"login.option.select", nil)] forState:UIControlStateNormal];
-        } else {
-            [self.accountButton setAttributedTitle:(NSAttributedString *)@"" forState:UIControlStateNormal];
-        }
-        [self.accountButton setImage:[UIImage imageNamed:@"DefaultAccount"] forState:UIControlStateNormal];
-        [self.accountButton sizeToFit];
+        [self.accountButton setAttributedTitle:[[NSAttributedString alloc] initWithString:titleText] forState:UIControlStateNormal];
+        [self.accountButton setImage:placeholder forState:UIControlStateNormal];
         return;
     }
 
     // Remove the prefix "Demo." if there is
     BOOL isDemo = [selected[@"username"] hasPrefix:@"Demo."];
-    NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:[selected[@"username"] substringFromIndex:(isDemo?5:0)]];
+    NSString *username = [selected[@"username"] substringFromIndex:(isDemo ? 5 : 0)];
+    titleText = username.length > 0 ? username : titleText;
 
     // Check if we're switching between demo and full mode
     BOOL shouldUpdateProfiles = (getenv("DEMO_LOCK")!=NULL) != isDemo;
@@ -349,34 +352,17 @@
     unsetenv("DEMO_LOCK");
     setenv("POJAV_GAME_DIR", [NSString stringWithFormat:@"%s/Library/Application Support/minecraft", getenv("POJAV_HOME")].UTF8String, 1);
 
-    id subtitle;
     if (isDemo) {
-        subtitle = localize(@"login.option.demo", nil);
         setenv("DEMO_LOCK", "1", 1);
         setenv("POJAV_GAME_DIR", [NSString stringWithFormat:@"%s/.demo", getenv("POJAV_HOME")].UTF8String, 1);
-    } else if (selected[@"xboxGamertag"] == nil) {
-        subtitle = localize(@"login.option.local", nil);
-    } else {
-        // Display the Xbox gamertag for online accounts
-        subtitle = selected[@"xboxGamertag"];
+        titleText = [NSString stringWithFormat:@"%@ (Demo)", titleText];
     }
 
-    subtitle = [[NSAttributedString alloc] initWithString:subtitle attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:12]}];
-    [title appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n" attributes:nil]];
-    [title appendAttributedString:subtitle];
-    
-    if((size.width / 3) > 200) {
-        [self.accountButton setAttributedTitle:title forState:UIControlStateNormal];
-    } else {
-        [self.accountButton setAttributedTitle:(NSAttributedString *)@"" forState:UIControlStateNormal];
-    }
-    
+    [self.accountButton setAttributedTitle:[[NSAttributedString alloc] initWithString:titleText] forState:UIControlStateNormal];
     // TODO: Add caching mechanism for profile pictures
     NSURL *url = [NSURL URLWithString:[selected[@"profilePicURL"] stringByReplacingOccurrencesOfString:@"\\/" withString:@"/"]];
-    UIImage *placeholder = [UIImage imageNamed:@"DefaultAccount"];
     [self.accountButton setImageForState:UIControlStateNormal withURL:url placeholderImage:placeholder];
     [self.accountButton.imageView setImageWithURL:url placeholderImage:placeholder];
-    [self.accountButton sizeToFit];
 
     // Update profiles and local version list if needed
     if (shouldUpdateProfiles) {

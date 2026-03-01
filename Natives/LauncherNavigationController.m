@@ -97,7 +97,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
     self.versionTextField.rightView.frame = CGRectMake(0, 0, self.versionTextField.frame.size.height * 0.9, self.versionTextField.frame.size.height * 0.9);
     self.versionTextField.leftViewMode = UITextFieldViewModeAlways;
     self.versionTextField.rightViewMode = UITextFieldViewModeAlways;
-    self.versionTextField.textAlignment = NSTextAlignmentCenter;
+    self.versionTextField.textAlignment = NSTextAlignmentLeft;
 
     self.versionPickerView = [[PLPickerView alloc] init];
     self.versionPickerView.delegate = self;

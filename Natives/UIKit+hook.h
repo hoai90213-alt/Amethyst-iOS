@@ -7,6 +7,8 @@ extern NSNotificationName UIPresentationControllerPresentationTransitionWillBegi
 - (NSString *)completeOSVersion;
 @end
 
+void PLRefreshThemeAppearance(void);
+
 @interface UIImageView(hook)
 @property(nonatomic) BOOL isSizeFixed;
 @end
