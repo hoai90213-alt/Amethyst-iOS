@@ -225,6 +225,9 @@
     }
 
     cell.textLabel.text = [self.options[indexPath.row] title];
+    cell.textLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    cell.textLabel.numberOfLines = 1;
+    cell.textLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     
     UIImage *origImage = [UIImage systemImageNamed:[self.options[indexPath.row]
         performSelector:@selector(imageName)]];

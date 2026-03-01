@@ -166,19 +166,19 @@ static UIColor *ZenithAccentColor(void) {
     [self.heroCardView addSubview:self.heroImageView];
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroTitleLabel.font = [UIFont systemFontOfSize:26.0 weight:UIFontWeightHeavy];
+    self.heroTitleLabel.font = [UIFont systemFontOfSize:20.0 weight:UIFontWeightHeavy];
     self.heroTitleLabel.textColor = UIColor.whiteColor;
     self.heroTitleLabel.numberOfLines = 2;
     [self.heroCardView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     self.heroSubtitleLabel.textColor = [UIColor colorWithRed:177.0/255.0 green:226.0/255.0 blue:1.0 alpha:1.0];
     self.heroSubtitleLabel.numberOfLines = 1;
     [self.heroCardView addSubview:self.heroSubtitleLabel];
 
     self.heroMetaLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroMetaLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    self.heroMetaLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     self.heroMetaLabel.textColor = [UIColor colorWithWhite:0.82 alpha:1.0];
     [self.heroCardView addSubview:self.heroMetaLabel];
 
@@ -222,7 +222,7 @@ static UIColor *ZenithAccentColor(void) {
 
     CGFloat titleX = CGRectGetMaxX(self.heroImageView.frame) + 14.0;
     CGFloat textWidth = MAX(80.0, heroWidth - titleX - 14.0);
-    self.heroTitleLabel.frame = CGRectMake(titleX, 18.0, textWidth, 58.0);
+    self.heroTitleLabel.frame = CGRectMake(titleX, 18.0, textWidth, 52.0);
     self.heroSubtitleLabel.frame = CGRectMake(titleX, 79.0, textWidth, 18.0);
     self.heroMetaLabel.frame = CGRectMake(titleX, 102.0, textWidth, 18.0);
 
@@ -636,7 +636,7 @@ static UIColor *ZenithAccentColor(void) {
 
     cell.textLabel.numberOfLines = 1;
     cell.textLabel.textColor = UIColor.whiteColor;
-    cell.textLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    cell.textLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
     cell.detailTextLabel.numberOfLines = 2;
     cell.detailTextLabel.textColor = [UIColor colorWithWhite:0.84 alpha:1.0];
     cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
