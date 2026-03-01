@@ -24,14 +24,15 @@
 
 static void *ProgressObserverContext = &ProgressObserverContext;
 
-static void applyLiquidGlassButtonStyle(UIButton *button) {
+static void applyPrimaryButtonStyle(UIButton *button) {
     if (!button) {
         return;
     }
-    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+    UIColor *accent = [UIColor colorWithRed:49.0/255.0 green:132.0/255.0 blue:224.0/255.0 alpha:1.0];
+    button.backgroundColor = accent;
     button.layer.cornerRadius = 12.0;
-    button.layer.borderWidth = 0.8;
-    button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.26].CGColor;
+    button.layer.borderWidth = 1.0;
+    button.layer.borderColor = [accent colorWithAlphaComponent:0.95].CGColor;
     button.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.22].CGColor;
     button.layer.shadowOffset = CGSizeMake(0, 8);
     button.layer.shadowOpacity = 0.2;
@@ -39,7 +40,7 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    button.tintColor = UIColor.labelColor;
+    button.tintColor = UIColor.whiteColor;
 }
 
 @interface LauncherNavigationController () <UIDocumentPickerDelegate, UIPickerViewDataSource, PLPickerViewDelegate, UIPopoverPresentationControllerDelegate> {
@@ -47,11 +48,9 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
 
 @property(nonatomic) MinecraftResourceDownloadTask* task;
 @property(nonatomic) DownloadProgressViewController* progressVC;
-@property(nonatomic) NSArray* globalToolbarItems;
 @property(nonatomic) PLPickerView* versionPickerView;
 @property(nonatomic) UITextField* versionTextField;
 @property(nonatomic) UIButton* buttonInstall;
-@property(nonatomic) UIBarButtonItem* buttonInstallItem;
 @property(nonatomic) int profileSelectedAt;
 
 @end
@@ -66,15 +65,8 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
         [self setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
     }
     UIToolbar *targetToolbar = self.toolbar;
-    BOOL hasLiquidGlass = _UISolariumEnabled && _UISolariumEnabled();
-    
-    if(hasLiquidGlass) {
-        self.versionTextField = [[PickTextField alloc] initWithFrame:CGRectMake(0, 0, MIN(self.view.frame.size.width,self.view.frame.size.height)*0.8 - 40, 36)];
-        self.progressViewMain = [[UIProgressView alloc] initWithFrame:CGRectMake(20, -5, self.versionTextField.frame.size.width-40, 0)];
-    } else {
-        self.versionTextField = [[PickTextField alloc] initWithFrame:CGRectMake(4, 4, self.toolbar.frame.size.width * 0.8 - 8, self.toolbar.frame.size.height - 8)];
-        self.progressViewMain = [[UIProgressView alloc] initWithFrame:CGRectMake(0, 0, targetToolbar.frame.size.width, 0)];
-    }
+    self.versionTextField = [[PickTextField alloc] initWithFrame:CGRectMake(4, 4, self.toolbar.frame.size.width * 0.8 - 8, self.toolbar.frame.size.height - 8)];
+    self.progressViewMain = [[UIProgressView alloc] initWithFrame:CGRectMake(0, 0, targetToolbar.frame.size.width, 0)];
     [self.versionTextField addTarget:self.versionTextField action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
     self.versionTextField.autoresizingMask = AUTORESIZE_MASKS;
     self.versionTextField.placeholder = @"Specify version...";
@@ -93,35 +85,17 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
 
     self.versionTextField.inputView = self.versionPickerView;
 
-    UIView *textFieldContainer = nil;
-    if(hasLiquidGlass) {
-        textFieldContainer = [[UIView alloc] initWithFrame:self.versionTextField.frame];
-        [textFieldContainer addSubview:self.progressViewMain];
-        self.buttonInstallItem = [[UIBarButtonItem alloc] initWithTitle:localize(@"Play", nil)
-                                                                  style:UIBarButtonItemStylePlain
-                                                                 target:self
-                                                                 action:@selector(performInstallOrShowDetails:)];
-        self.buttonInstallItem.tintColor = UIColor.labelColor;
-        self.buttonInstallItem.enabled = NO;
-        [textFieldContainer addSubview:self.versionTextField];
-        UIBarButtonItem *textFieldItem = [[UIBarButtonItem alloc] initWithCustomView:textFieldContainer];
-        self.globalToolbarItems = @[
-            textFieldItem,
-            self.buttonInstallItem,
-        ];
-    } else {
-        self.buttonInstall = [UIButton buttonWithType:UIButtonTypeSystem];
-        setButtonPointerInteraction(self.buttonInstall);
-        [self.buttonInstall setTitle:localize(@"Play", nil) forState:UIControlStateNormal];
-        self.buttonInstall.autoresizingMask = AUTORESIZE_MASKS;
-        self.buttonInstall.frame = CGRectMake(self.toolbar.frame.size.width * 0.8, 4, self.toolbar.frame.size.width * 0.2, self.toolbar.frame.size.height - 8);
-        applyLiquidGlassButtonStyle(self.buttonInstall);
-        self.buttonInstall.enabled = NO;
-        [self.buttonInstall addTarget:self action:@selector(performInstallOrShowDetails:) forControlEvents:UIControlEventPrimaryActionTriggered];
-        [targetToolbar addSubview:self.progressViewMain];
-        [targetToolbar addSubview:self.versionTextField];
-        [targetToolbar addSubview:self.buttonInstall];
-    }
+    self.buttonInstall = [UIButton buttonWithType:UIButtonTypeSystem];
+    setButtonPointerInteraction(self.buttonInstall);
+    [self.buttonInstall setTitle:localize(@"Play", nil) forState:UIControlStateNormal];
+    self.buttonInstall.autoresizingMask = AUTORESIZE_MASKS;
+    self.buttonInstall.frame = CGRectMake(self.toolbar.frame.size.width * 0.8, 4, self.toolbar.frame.size.width * 0.2, self.toolbar.frame.size.height - 8);
+    applyPrimaryButtonStyle(self.buttonInstall);
+    self.buttonInstall.enabled = NO;
+    [self.buttonInstall addTarget:self action:@selector(performInstallOrShowDetails:) forControlEvents:UIControlEventPrimaryActionTriggered];
+    [targetToolbar addSubview:self.progressViewMain];
+    [targetToolbar addSubview:self.versionTextField];
+    [targetToolbar addSubview:self.buttonInstall];
     
     self.progressViewMain.autoresizingMask = AUTORESIZE_MASKS;
     self.progressViewMain.hidden = YES;
@@ -132,11 +106,7 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
     self.progressText.textAlignment = NSTextAlignmentCenter;
     self.progressText.userInteractionEnabled = NO;
     
-    if(hasLiquidGlass) {
-        [textFieldContainer addSubview:self.progressText];
-    } else {
-        [targetToolbar addSubview:self.progressText];
-    }
+    [targetToolbar addSubview:self.progressText];
 
     [self fetchRemoteVersionList];
     [NSNotificationCenter.defaultCenter addObserver:self
@@ -157,13 +127,6 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
             }
         };
         [BaseAuthenticator.current refreshTokenWithCallback:callback];
-    }
-}
-
-- (void)setViewControllers:(NSArray<UIViewController *> *)viewControllers animated:(BOOL)animated {
-    [super setViewControllers:viewControllers animated:animated];
-    if (!viewControllers.firstObject.toolbarItems && self.globalToolbarItems) {
-        viewControllers.firstObject.toolbarItems = self.globalToolbarItems;
     }
 }
 
@@ -193,7 +156,7 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
 }
 
 - (void)fetchRemoteVersionList {
-    [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:NO];
+    self.buttonInstall.enabled = NO;
     remoteVersionList = @[
         @{@"id": @"latest-release", @"type": @"release"},
         @{@"id": @"latest-snapshot", @"type": @"snapshot"}
@@ -206,10 +169,10 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
         [remoteVersionList addObjectsFromArray:responseObject[@"versions"]];
         NSDebugLog(@"[VersionList] Got %d versions", remoteVersionList.count);
         setPrefObject(@"internal.latest_version", responseObject[@"latest"]);
-        [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:YES];
+        self.buttonInstall.enabled = YES;
     } failure:^(NSURLSessionTask *operation, NSError *error) {
         NSDebugLog(@"[VersionList] Warning: Unable to fetch version list: %@", error.localizedDescription);
-        [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:YES];
+        self.buttonInstall.enabled = YES;
     }];
 }
 
@@ -282,20 +245,15 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
     self.progressViewMain.hidden = enabled;
     self.progressText.text = nil;
     if (downloading) {
-        if(self.buttonInstall) {
-            [self.buttonInstall setTitle:localize(enabled ? @"Play" : @"Details", nil) forState:UIControlStateNormal];
-            self.buttonInstall.enabled = YES;
-        } else {
-            self.buttonInstallItem.title = localize(enabled ? @"Play" : @"Details", nil);
-            self.buttonInstallItem.enabled = YES;
-        }
+        [self.buttonInstall setTitle:localize(enabled ? @"Play" : @"Details", nil) forState:UIControlStateNormal];
+        self.buttonInstall.enabled = YES;
     } else {
-        self.buttonInstallItem.enabled = enabled;
+        self.buttonInstall.enabled = enabled;
     }
     UIApplication.sharedApplication.idleTimerDisabled = !enabled;
 }
 
-- (void)launchMinecraft:(UIButton *)sender {
+- (void)launchMinecraft:(id)sender {
     if (!self.versionTextField.hasText) {
         [self.versionTextField becomeFirstResponder];
         return;
@@ -341,14 +299,20 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
     });
 }
 
-- (void)performInstallOrShowDetails:(UIBarButtonItem *)sender {
+- (void)performInstallOrShowDetails:(id)sender {
     if (self.task) {
         if (!self.progressVC) {
             self.progressVC = [[DownloadProgressViewController alloc] initWithTask:self.task];
         }
         UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:self.progressVC];
         nav.modalPresentationStyle = UIModalPresentationPopover;
-        nav.popoverPresentationController.sourceView = sender.view;
+        if ([sender isKindOfClass:UIBarButtonItem.class]) {
+            nav.popoverPresentationController.sourceView = ((UIBarButtonItem *)sender).view;
+        } else if ([sender isKindOfClass:UIView.class]) {
+            nav.popoverPresentationController.sourceView = (UIView *)sender;
+        } else {
+            nav.popoverPresentationController.sourceView = self.view;
+        }
         [self presentViewController:nav animated:YES completion:nil];
     } else {
         [self launchMinecraft:sender];
@@ -525,15 +489,6 @@ static void applyLiquidGlassButtonStyle(UIButton *button) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [sidebarViewController updateAccountInfo];
-    if (self.globalToolbarItems) {
-        if (!self.viewControllers.firstObject.toolbarItems) {
-            self.viewControllers.firstObject.toolbarItems = self.globalToolbarItems;
-        }
-        // resize textFieldContainer to fit, need dispatch queue or it freezes for some reason...
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.versionTextField.superview.frame = CGRectMake(0, 0, MIN(self.view.frame.size.width,self.view.frame.size.height)*0.8 - 40, 36);
-        });
-    }
 }
 
 @end

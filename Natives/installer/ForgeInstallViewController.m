@@ -63,10 +63,18 @@
     self = [super initWithReuseIdentifier:reuseIdentifier];
     if (self) {
         UIView *containerView = [[UIView alloc] init];
-        containerView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+        containerView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithRed:38.0/255.0 green:45.0/255.0 blue:60.0/255.0 alpha:0.96]
+                : [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.94];
+        }];
         containerView.layer.cornerRadius = 12.0;
-        containerView.layer.borderWidth = 0.8;
-        containerView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.22].CGColor;
+        containerView.layer.borderWidth = 1.0;
+        containerView.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithRed:88.0/255.0 green:102.0/255.0 blue:126.0/255.0 alpha:0.42]
+                : [UIColor colorWithRed:190.0/255.0 green:204.0/255.0 blue:223.0/255.0 alpha:0.72];
+        }].CGColor;
         if (@available(iOS 13.0, *)) {
             containerView.layer.cornerCurve = kCACornerCurveContinuous;
         }
@@ -161,11 +169,15 @@
     [super viewDidLoad];
     
     if (self.navigationController) {
-        self.navigationController.navigationBar.translucent = YES;
+        self.navigationController.navigationBar.translucent = NO;
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
-        [appearance configureWithTransparentBackground];
-        appearance.backgroundEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        appearance.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+        [appearance configureWithOpaqueBackground];
+        appearance.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithRed:26.0/255.0 green:31.0/255.0 blue:44.0/255.0 alpha:1.0]
+                : [UIColor colorWithRed:247.0/255.0 green:250.0/255.0 blue:255.0/255.0 alpha:1.0];
+        }];
+        appearance.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.08];
         self.navigationController.navigationBar.standardAppearance = appearance;
         self.navigationController.navigationBar.compactAppearance = appearance;
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
