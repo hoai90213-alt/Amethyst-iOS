@@ -63,7 +63,13 @@
     self = [super initWithReuseIdentifier:reuseIdentifier];
     if (self) {
         UIView *containerView = [[UIView alloc] init];
-        containerView.backgroundColor = [UIColor systemGroupedBackgroundColor];
+        containerView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+        containerView.layer.cornerRadius = 12.0;
+        containerView.layer.borderWidth = 0.8;
+        containerView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.22].CGColor;
+        if (@available(iOS 13.0, *)) {
+            containerView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
         containerView.translatesAutoresizingMaskIntoConstraints = NO;
         [self.contentView addSubview:containerView];
         
@@ -155,10 +161,11 @@
     [super viewDidLoad];
     
     if (self.navigationController) {
-        self.navigationController.navigationBar.translucent = NO;
+        self.navigationController.navigationBar.translucent = YES;
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
-        [appearance configureWithOpaqueBackground];
-        appearance.backgroundColor = [UIColor systemBackgroundColor];
+        [appearance configureWithTransparentBackground];
+        appearance.backgroundEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        appearance.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
         self.navigationController.navigationBar.standardAppearance = appearance;
         self.navigationController.navigationBar.compactAppearance = appearance;
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;

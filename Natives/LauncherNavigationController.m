@@ -24,6 +24,24 @@
 
 static void *ProgressObserverContext = &ProgressObserverContext;
 
+static void applyLiquidGlassButtonStyle(UIButton *button) {
+    if (!button) {
+        return;
+    }
+    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+    button.layer.cornerRadius = 12.0;
+    button.layer.borderWidth = 0.8;
+    button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.26].CGColor;
+    button.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.22].CGColor;
+    button.layer.shadowOffset = CGSizeMake(0, 8);
+    button.layer.shadowOpacity = 0.2;
+    button.layer.shadowRadius = 14.0;
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    button.tintColor = UIColor.labelColor;
+}
+
 @interface LauncherNavigationController () <UIDocumentPickerDelegate, UIPickerViewDataSource, PLPickerViewDelegate, UIPopoverPresentationControllerDelegate> {
 }
 
@@ -83,10 +101,8 @@ static void *ProgressObserverContext = &ProgressObserverContext;
                                                                   style:UIBarButtonItemStylePlain
                                                                  target:self
                                                                  action:@selector(performInstallOrShowDetails:)];
+        self.buttonInstallItem.tintColor = UIColor.labelColor;
         self.buttonInstallItem.enabled = NO;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.buttonInstallItem.view.superview.superview.superview.superview.backgroundColor = [UIColor colorWithRed:121/255.0 green:56/255.0 blue:162/255.0 alpha:0.5];
-        });
         [textFieldContainer addSubview:self.versionTextField];
         UIBarButtonItem *textFieldItem = [[UIBarButtonItem alloc] initWithCustomView:textFieldContainer];
         self.globalToolbarItems = @[
@@ -98,10 +114,8 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         setButtonPointerInteraction(self.buttonInstall);
         [self.buttonInstall setTitle:localize(@"Play", nil) forState:UIControlStateNormal];
         self.buttonInstall.autoresizingMask = AUTORESIZE_MASKS;
-        self.buttonInstall.backgroundColor = [UIColor colorWithRed:121/255.0 green:56/255.0 blue:162/255.0 alpha:1.0];
-        self.buttonInstall.layer.cornerRadius = 5;
         self.buttonInstall.frame = CGRectMake(self.toolbar.frame.size.width * 0.8, 4, self.toolbar.frame.size.width * 0.2, self.toolbar.frame.size.height - 8);
-        self.buttonInstall.tintColor = UIColor.whiteColor;
+        applyLiquidGlassButtonStyle(self.buttonInstall);
         self.buttonInstall.enabled = NO;
         [self.buttonInstall addTarget:self action:@selector(performInstallOrShowDetails:) forControlEvents:UIControlEventPrimaryActionTriggered];
         [targetToolbar addSubview:self.progressViewMain];
