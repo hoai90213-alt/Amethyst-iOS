@@ -1,4 +1,5 @@
 #import <QuartzCore/QuartzCore.h>
+#import "authenticator/BaseAuthenticator.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
@@ -36,9 +37,13 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
 @property(nonatomic) UILabel *heroTitleLabel;
 @property(nonatomic) UILabel *heroSubtitleLabel;
 @property(nonatomic) UILabel *heroMetaLabel;
+@property(nonatomic) UIButton *versionButton;
 @property(nonatomic) UIButton *launchButton;
 @property(nonatomic) UIButton *editButton;
 @property(nonatomic) UIButton *directoryButton;
+@property(nonatomic) UIProgressView *launchProgressView;
+@property(nonatomic) UILabel *launchStatusLabel;
+@property(nonatomic) BOOL launchTaskActive;
 
 @end
 
@@ -81,6 +86,11 @@ static UIColor *ZenithAccentColor(void) {
 
     [self buildCreateButton];
     [self buildDashboardHeader];
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(handlePlayStateChanged:) name:LauncherPlayStateDidChangeNotification object:nil];
+}
+
+- (void)dealloc {
+    [NSNotificationCenter.defaultCenter removeObserver:self name:LauncherPlayStateDidChangeNotification object:nil];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -98,6 +108,11 @@ static UIColor *ZenithAccentColor(void) {
     [PLProfiles updateCurrent];
     [self normalizeSelectedProfileIfNeeded];
     [self refreshDashboardContent];
+    if (!self.launchTaskActive) {
+        self.launchStatusLabel.text = @"Ready";
+        self.launchProgressView.hidden = YES;
+        [self.launchProgressView setProgress:0.0f animated:NO];
+    }
     [self.tableView reloadData];
 
     if ([self.navigationController isKindOfClass:LauncherNavigationController.class]) {
@@ -141,7 +156,7 @@ static UIColor *ZenithAccentColor(void) {
 }
 
 - (void)buildDashboardHeader {
-    self.dashboardHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 236.0)];
+    self.dashboardHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 392.0)];
     self.dashboardHeaderView.backgroundColor = UIColor.clearColor;
 
     self.heroCardView = [[UIView alloc] initWithFrame:CGRectZero];
@@ -159,29 +174,36 @@ static UIColor *ZenithAccentColor(void) {
     [self.dashboardHeaderView addSubview:self.heroCardView];
 
     self.heroImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
-    self.heroImageView.contentMode = UIViewContentModeScaleAspectFill;
-    self.heroImageView.layer.cornerRadius = 14.0;
+    self.heroImageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroImageView.layer.cornerRadius = 16.0;
     self.heroImageView.layer.borderWidth = 1.0;
     self.heroImageView.layer.borderColor = [ZenithAccentColor() colorWithAlphaComponent:0.65].CGColor;
     self.heroImageView.clipsToBounds = YES;
     [self.heroCardView addSubview:self.heroImageView];
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroTitleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightHeavy];
+    self.heroTitleLabel.font = [UIFont systemFontOfSize:20.0 weight:UIFontWeightHeavy];
     self.heroTitleLabel.textColor = UIColor.whiteColor;
-    self.heroTitleLabel.numberOfLines = 2;
+    self.heroTitleLabel.numberOfLines = 1;
+    self.heroTitleLabel.textAlignment = NSTextAlignmentCenter;
     [self.heroCardView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     self.heroSubtitleLabel.textColor = [PLThemeAccentBlendColor(UIColor.whiteColor, 0.12) colorWithAlphaComponent:0.92];
     self.heroSubtitleLabel.numberOfLines = 1;
+    self.heroSubtitleLabel.textAlignment = NSTextAlignmentCenter;
     [self.heroCardView addSubview:self.heroSubtitleLabel];
 
     self.heroMetaLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroMetaLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     self.heroMetaLabel.textColor = [UIColor colorWithWhite:0.82 alpha:1.0];
+    self.heroMetaLabel.textAlignment = NSTextAlignmentCenter;
     [self.heroCardView addSubview:self.heroMetaLabel];
+
+    self.versionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    [self.versionButton addTarget:self action:@selector(actionPickVersion:) forControlEvents:UIControlEventPrimaryActionTriggered];
+    [self.heroCardView addSubview:self.versionButton];
 
     self.launchButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.launchButton setTitle:localize(@"Play", nil) forState:UIControlStateNormal];
@@ -198,6 +220,20 @@ static UIColor *ZenithAccentColor(void) {
     [self.directoryButton addTarget:self action:@selector(actionOpenGameDirectory:) forControlEvents:UIControlEventPrimaryActionTriggered];
     [self.heroCardView addSubview:self.directoryButton];
 
+    self.launchProgressView = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
+    self.launchProgressView.trackTintColor = [UIColor colorWithWhite:1.0 alpha:0.15];
+    self.launchProgressView.progressTintColor = ZenithAccentColor();
+    self.launchProgressView.hidden = YES;
+    [self.heroCardView addSubview:self.launchProgressView];
+
+    self.launchStatusLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.launchStatusLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    self.launchStatusLabel.textColor = [UIColor colorWithWhite:0.86 alpha:0.9];
+    self.launchStatusLabel.textAlignment = NSTextAlignmentCenter;
+    self.launchStatusLabel.numberOfLines = 1;
+    self.launchStatusLabel.text = @"Ready";
+    [self.heroCardView addSubview:self.launchStatusLabel];
+
     self.tableView.tableHeaderView = self.dashboardHeaderView;
     [self refreshDashboardContent];
 }
@@ -213,33 +249,38 @@ static UIColor *ZenithAccentColor(void) {
     }
 
     CGFloat horizontalPadding = 16.0;
-    CGFloat heroHeight = 214.0;
+    CGFloat heroHeight = 370.0;
     CGFloat heroWidth = MAX(0.0, tableWidth - horizontalPadding * 2.0);
 
-    self.dashboardHeaderView.frame = CGRectMake(0, 0, tableWidth, heroHeight + 10.0);
+    self.dashboardHeaderView.frame = CGRectMake(0, 0, tableWidth, heroHeight + 14.0);
     self.heroCardView.frame = CGRectMake(horizontalPadding, 6.0, heroWidth, heroHeight);
 
-    self.heroImageView.frame = CGRectMake(14.0, 14.0, 66.0, 66.0);
+    CGFloat imageSize = MIN(heroWidth - 72.0, 170.0);
+    self.heroImageView.frame = CGRectMake((heroWidth - imageSize) / 2.0, 18.0, imageSize, imageSize + 24.0);
 
-    CGFloat titleX = CGRectGetMaxX(self.heroImageView.frame) + 14.0;
-    CGFloat textWidth = MAX(80.0, heroWidth - titleX - 14.0);
-    self.heroTitleLabel.frame = CGRectMake(titleX, 15.0, textWidth, 42.0);
-    self.heroSubtitleLabel.frame = CGRectMake(titleX, 58.0, textWidth, 16.0);
-    self.heroMetaLabel.frame = CGRectMake(titleX, 78.0, textWidth, 16.0);
+    CGFloat textWidth = MAX(120.0, heroWidth - 28.0);
+    self.heroTitleLabel.frame = CGRectMake(14.0, CGRectGetMaxY(self.heroImageView.frame) + 10.0, textWidth, 24.0);
+    self.heroSubtitleLabel.frame = CGRectMake(14.0, CGRectGetMaxY(self.heroTitleLabel.frame) + 2.0, textWidth, 18.0);
+    self.heroMetaLabel.frame = CGRectMake(14.0, CGRectGetMaxY(self.heroSubtitleLabel.frame) + 1.0, textWidth, 17.0);
 
-    CGFloat controlY = heroHeight - 46.0;
     CGFloat contentWidth = MAX(0.0, heroWidth - 32.0);
-    CGFloat launchWidth = floor(contentWidth * 0.52);
-    CGFloat sideWidth = floor((contentWidth - launchWidth - 16.0) / 2.0);
+    self.versionButton.frame = CGRectMake(16.0, CGRectGetMaxY(self.heroMetaLabel.frame) + 10.0, contentWidth, 34.0);
+
+    self.launchProgressView.frame = CGRectMake(16.0, CGRectGetMaxY(self.versionButton.frame) + 10.0, contentWidth, 4.0);
+    self.launchStatusLabel.frame = CGRectMake(16.0, CGRectGetMaxY(self.launchProgressView.frame) + 5.0, contentWidth, 16.0);
+
+    CGFloat controlY = CGRectGetMaxY(self.launchStatusLabel.frame) + 8.0;
+    CGFloat launchWidth = floor(contentWidth * 0.58);
+    CGFloat sideWidth = floor((contentWidth - launchWidth - 8.0) / 2.0);
     CGFloat minSideWidth = 84.0;
     if (sideWidth < minSideWidth) {
         sideWidth = minSideWidth;
-        launchWidth = MAX(120.0, contentWidth - (sideWidth * 2.0) - 16.0);
+        launchWidth = MAX(120.0, contentWidth - (sideWidth * 2.0) - 8.0);
     }
 
-    self.launchButton.frame = CGRectMake(16.0, controlY, launchWidth, 36.0);
-    self.editButton.frame = CGRectMake(CGRectGetMaxX(self.launchButton.frame) + 8.0, controlY, sideWidth, 36.0);
-    self.directoryButton.frame = CGRectMake(CGRectGetMaxX(self.editButton.frame) + 8.0, controlY, sideWidth, 36.0);
+    self.launchButton.frame = CGRectMake(16.0, controlY, launchWidth, 38.0);
+    self.editButton.frame = CGRectMake(CGRectGetMaxX(self.launchButton.frame) + 4.0, controlY, sideWidth, 38.0);
+    self.directoryButton.frame = CGRectMake(CGRectGetMaxX(self.editButton.frame) + 4.0, controlY, sideWidth, 38.0);
 
     [self styleHeroButtons];
 
@@ -249,6 +290,7 @@ static UIColor *ZenithAccentColor(void) {
 }
 
 - (void)styleHeroButtons {
+    [self styleSecondaryButton:self.versionButton symbol:@"shippingbox"];
     [self styleSecondaryButton:self.editButton symbol:@"square.and.pencil"];
     [self styleSecondaryButton:self.directoryButton symbol:@"folder"];
 
@@ -263,7 +305,7 @@ static UIColor *ZenithAccentColor(void) {
         self.launchButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.launchButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.launchButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    self.launchButton.titleLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightBold];
 
     CAGradientLayer *gradient = nil;
     for (CALayer *layer in self.launchButton.layer.sublayers) {
@@ -300,6 +342,8 @@ static UIColor *ZenithAccentColor(void) {
     }
     [button setTitleColor:[UIColor colorWithWhite:0.94 alpha:1.0] forState:UIControlStateNormal];
     button.titleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.8;
     button.backgroundColor = [PLThemeAccentBlendColor([UIColor colorWithRed:23.0/255.0 green:37.0/255.0 blue:62.0/255.0 alpha:0.9], 0.18) colorWithAlphaComponent:0.95];
     button.layer.cornerRadius = 10.0;
     button.layer.borderWidth = 1.0;
@@ -403,18 +447,21 @@ static UIColor *ZenithAccentColor(void) {
     NSArray<NSDictionary *> *entries = [self profileEntries];
     NSDictionary *selected = [self selectedProfileEntry];
 
-    UIImage *placeholder = [[UIImage imageNamed:@"DefaultProfile"] _imageWithSize:CGSizeMake(84, 84)];
+    UIImage *placeholder = [[UIImage imageNamed:@"DefaultProfile"] _imageWithSize:CGSizeMake(140, 140)];
     if (selected == nil) {
         self.heroTitleLabel.text = localize(@"profile.title.create", nil);
         self.heroSubtitleLabel.text = @"No profile selected";
         self.heroMetaLabel.text = localize(@"profile.section.profiles", nil);
         self.heroImageView.image = placeholder;
+        [self.versionButton setTitle:@"Version: -" forState:UIControlStateNormal];
         self.launchButton.enabled = NO;
         self.editButton.enabled = NO;
+        self.directoryButton.enabled = NO;
         return;
     }
 
     NSDictionary *profile = [self entryProfile:selected];
+    NSDictionary *account = BaseAuthenticator.current.authData;
     NSString *name = [self entryDisplayName:selected];
     NSString *version = profile[@"lastVersionId"];
     if (![version isKindOfClass:NSString.class] || version.length == 0) {
@@ -422,18 +469,26 @@ static UIColor *ZenithAccentColor(void) {
     }
 
     self.heroTitleLabel.text = name;
-    self.heroSubtitleLabel.text = [NSString stringWithFormat:@"Version: %@", version];
+    self.heroSubtitleLabel.text = @"Ready to launch";
     self.heroMetaLabel.text = [NSString stringWithFormat:@"%@: %lu", localize(@"profile.section.profiles", nil), (unsigned long)entries.count];
+    [self.versionButton setTitle:[NSString stringWithFormat:@"Version: %@", version] forState:UIControlStateNormal];
 
-    NSString *iconURLString = profile[@"icon"];
-    if ([iconURLString isKindOfClass:NSString.class] && iconURLString.length > 0) {
-        [self.heroImageView setImageWithURL:[NSURL URLWithString:iconURLString] placeholderImage:placeholder];
+    NSString *profileId = [account isKindOfClass:NSDictionary.class] ? account[@"profileId"] : nil;
+    if ([profileId isKindOfClass:NSString.class] && profileId.length > 0 && ![profileId isEqualToString:@"00000000-0000-0000-0000-000000000000"]) {
+        NSString *body3DUrl = [NSString stringWithFormat:@"https://mc-heads.net/body/%@/right", profileId];
+        [self.heroImageView setImageWithURL:[NSURL URLWithString:body3DUrl] placeholderImage:placeholder];
     } else {
-        self.heroImageView.image = placeholder;
+        NSString *iconURLString = profile[@"icon"];
+        if ([iconURLString isKindOfClass:NSString.class] && iconURLString.length > 0) {
+            [self.heroImageView setImageWithURL:[NSURL URLWithString:iconURLString] placeholderImage:placeholder];
+        } else {
+            self.heroImageView.image = placeholder;
+        }
     }
 
     self.launchButton.enabled = YES;
     self.editButton.enabled = YES;
+    self.directoryButton.enabled = YES;
 }
 
 - (void)setSelectedProfileWithEntry:(NSDictionary *)entry {
@@ -449,6 +504,95 @@ static UIColor *ZenithAccentColor(void) {
 
     if ([self.navigationController isKindOfClass:LauncherNavigationController.class]) {
         [(LauncherNavigationController *)self.navigationController reloadProfileList];
+    }
+}
+
+- (NSArray<NSString *> *)versionCandidates {
+    NSMutableOrderedSet<NSString *> *set = [NSMutableOrderedSet orderedSet];
+    [set addObject:@"latest-release"];
+    [set addObject:@"latest-snapshot"];
+
+    for (NSDictionary *item in localVersionList ?: @[]) {
+        NSString *versionId = [item isKindOfClass:NSDictionary.class] ? item[@"id"] : nil;
+        if ([versionId isKindOfClass:NSString.class] && versionId.length > 0) {
+            [set addObject:versionId];
+        }
+    }
+
+    NSInteger releaseCount = 0;
+    NSInteger snapshotCount = 0;
+    for (NSDictionary *item in remoteVersionList ?: @[]) {
+        if (![item isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *versionId = item[@"id"];
+        NSString *type = item[@"type"];
+        if (![versionId isKindOfClass:NSString.class] || versionId.length == 0) {
+            continue;
+        }
+
+        BOOL isRelease = [type isEqualToString:@"release"];
+        BOOL isSnapshot = [type isEqualToString:@"snapshot"];
+        if (isRelease && releaseCount < 12) {
+            [set addObject:versionId];
+            releaseCount++;
+        } else if (isSnapshot && snapshotCount < 8) {
+            [set addObject:versionId];
+            snapshotCount++;
+        }
+        if (releaseCount >= 12 && snapshotCount >= 8) {
+            break;
+        }
+    }
+
+    return set.array;
+}
+
+- (void)applyVersionId:(NSString *)versionId forEntry:(NSDictionary *)entry {
+    if (![versionId isKindOfClass:NSString.class] || versionId.length == 0 || entry == nil) {
+        return;
+    }
+    NSString *key = [self entryKey:entry];
+    if (key.length == 0) {
+        return;
+    }
+
+    NSDictionary *source = [self entryProfile:entry];
+    NSMutableDictionary *updatedProfile = [source isKindOfClass:NSDictionary.class] ? source.mutableCopy : [NSMutableDictionary dictionary];
+    updatedProfile[@"lastVersionId"] = versionId;
+    if (updatedProfile[@"name"] == nil) {
+        updatedProfile[@"name"] = key;
+    }
+    PLProfiles.current.profiles[key] = updatedProfile;
+    if (![PLProfiles.current.selectedProfileName isEqualToString:key]) {
+        PLProfiles.current.selectedProfileName = key;
+    } else {
+        [PLProfiles.current save];
+    }
+
+    [self refreshDashboardContent];
+    [self.tableView reloadData];
+    if ([self.navigationController isKindOfClass:LauncherNavigationController.class]) {
+        [(LauncherNavigationController *)self.navigationController reloadProfileList];
+    }
+}
+
+- (void)handlePlayStateChanged:(NSNotification *)notification {
+    NSDictionary *userInfo = notification.userInfo;
+    BOOL active = [userInfo[@"active"] boolValue];
+    NSString *text = [userInfo[@"text"] isKindOfClass:NSString.class] ? userInfo[@"text"] : nil;
+    NSNumber *progress = [userInfo[@"progress"] isKindOfClass:NSNumber.class] ? userInfo[@"progress"] : nil;
+    self.launchTaskActive = active;
+    self.launchProgressView.hidden = !active;
+    if (progress != nil) {
+        [self.launchProgressView setProgress:progress.floatValue animated:YES];
+    } else if (!active) {
+        [self.launchProgressView setProgress:0.0f animated:NO];
+    }
+    if (text.length > 0) {
+        self.launchStatusLabel.text = text;
+    } else {
+        self.launchStatusLabel.text = active ? @"Preparing..." : @"Ready";
     }
 }
 
@@ -493,6 +637,62 @@ static UIColor *ZenithAccentColor(void) {
     [self actionEditProfile:[self entryProfile:selected]];
 }
 
+- (void)actionPickVersion:(id)sender {
+    (void)sender;
+    NSDictionary *selected = [self selectedProfileEntry];
+    if (selected == nil) {
+        return;
+    }
+
+    NSArray<NSString *> *choices = [self versionCandidates];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:@"Select version"
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    NSDictionary *profile = [self entryProfile:selected];
+    NSString *current = [profile[@"lastVersionId"] isKindOfClass:NSString.class] ? profile[@"lastVersionId"] : @"latest-release";
+
+    NSInteger maxItems = MIN((NSInteger)choices.count, 16);
+    for (NSInteger i = 0; i < maxItems; i++) {
+        NSString *versionId = choices[i];
+        NSString *title = [versionId isEqualToString:current] ? [NSString stringWithFormat:@"%@ (current)", versionId] : versionId;
+        UIAlertAction *action = [UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *alertAction) {
+            (void)alertAction;
+            [self applyVersionId:versionId forEntry:selected];
+        }];
+        [sheet addAction:action];
+    }
+
+    UIAlertAction *manual = [UIAlertAction actionWithTitle:@"Nhap ma version..." style:UIAlertActionStyleDefault handler:^(UIAlertAction *alertAction) {
+        (void)alertAction;
+        UIAlertController *input = [UIAlertController alertControllerWithTitle:@"Version ID"
+                                                                       message:@"Vi du: 1.21.4, latest-release, latest-snapshot"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        [input addTextFieldWithConfigurationHandler:^(UITextField *field) {
+            field.autocorrectionType = UITextAutocorrectionTypeNo;
+            field.autocapitalizationType = UITextAutocapitalizationTypeNone;
+            field.text = current;
+        }];
+        [input addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+        [input addAction:[UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *saveAction) {
+            (void)saveAction;
+            NSString *value = [[input.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] copy];
+            if (value.length > 0) {
+                [self applyVersionId:value forEntry:selected];
+            }
+        }]];
+        [self presentViewController:input animated:YES completion:nil];
+    }];
+    [sheet addAction:manual];
+    [sheet addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+
+    UIPopoverPresentationController *popover = sheet.popoverPresentationController;
+    if (popover != nil) {
+        popover.sourceView = self.versionButton;
+        popover.sourceRect = self.versionButton.bounds;
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
 - (void)actionOpenGameDirectory:(id)sender {
     (void)sender;
     [self.navigationController pushViewController:[LauncherPrefGameDirViewController new] animated:YES];
@@ -504,6 +704,9 @@ static UIColor *ZenithAccentColor(void) {
         return;
     }
     [self setSelectedProfileWithEntry:selected];
+    self.launchStatusLabel.text = @"Preparing...";
+    self.launchProgressView.hidden = NO;
+    [self.launchProgressView setProgress:0.02f animated:NO];
     if ([self.navigationController isKindOfClass:LauncherNavigationController.class]) {
         LauncherNavigationController *nav = (LauncherNavigationController *)self.navigationController;
         [nav launchMinecraft:sender];

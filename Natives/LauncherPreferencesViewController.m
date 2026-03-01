@@ -445,6 +445,10 @@
     ];
 
     [super viewDidLoad];
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 6.0;
+    }
+    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 10, 0);
     if (self.navigationController == nil) {
         self.tableView.alpha = 0.9;
     }

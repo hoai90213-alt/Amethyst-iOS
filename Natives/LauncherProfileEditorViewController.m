@@ -105,7 +105,7 @@
             },
             @{@"key": @"gameDir",
               @"icon": @"folder",
-              @"title": @"preference.title.game_directory",
+              @"title": @"Game Directory",
               @"type": self.typeTextField,
               @"placeholder": [NSString stringWithFormat:@". -> /Documents/instances/%@", getPrefObject(@"general.game_directory")]
             },

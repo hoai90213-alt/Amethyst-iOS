@@ -24,6 +24,7 @@
 #define AUTORESIZE_MASKS UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin
 
 static void *ProgressObserverContext = &ProgressObserverContext;
+NSString * const LauncherPlayStateDidChangeNotification = @"LauncherPlayStateDidChangeNotification";
 
 static void applyPrimaryButtonStyle(UIButton *button) {
     if (!button) {
@@ -198,19 +199,99 @@ static void applyPrimaryButtonStyle(UIButton *button) {
     }];
 }
 
+- (NSArray<NSString *> *)profileKeys {
+    NSDictionary *profiles = PLProfiles.current.profiles;
+    if (![profiles isKindOfClass:NSDictionary.class]) {
+        return @[];
+    }
+    return profiles.allKeys ?: @[];
+}
+
+- (NSString *)displayNameForProfileKey:(NSString *)key {
+    if (key.length == 0) {
+        return @"";
+    }
+    NSDictionary *profile = PLProfiles.current.profiles[key];
+    NSString *displayName = [profile isKindOfClass:NSDictionary.class] ? profile[@"name"] : nil;
+    if (![displayName isKindOfClass:NSString.class] || displayName.length == 0) {
+        displayName = key;
+    }
+    return displayName ?: @"";
+}
+
+- (NSString *)selectedProfileKey {
+    NSArray<NSString *> *keys = [self profileKeys];
+    if (keys.count == 0) {
+        return nil;
+    }
+
+    NSString *selected = PLProfiles.current.selectedProfileName;
+    if ([selected isKindOfClass:NSString.class] && [PLProfiles.current.profiles[selected] isKindOfClass:NSDictionary.class]) {
+        return selected;
+    }
+
+    if ([selected isKindOfClass:NSString.class] && selected.length > 0) {
+        for (NSString *key in keys) {
+            if ([[self displayNameForProfileKey:key] isEqualToString:selected]) {
+                return key;
+            }
+        }
+    }
+
+    return keys.firstObject;
+}
+
+- (NSDictionary *)selectedProfileDictionary {
+    NSString *key = [self selectedProfileKey];
+    if (key.length == 0) {
+        return nil;
+    }
+    NSDictionary *profile = PLProfiles.current.profiles[key];
+    return [profile isKindOfClass:NSDictionary.class] ? profile : nil;
+}
+
+- (void)notifyPlayStateWithText:(NSString *)text progress:(CGFloat)progress active:(BOOL)active {
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[@"active"] = @(active);
+    if ([text isKindOfClass:NSString.class]) {
+        userInfo[@"text"] = text;
+    }
+    if (progress >= 0.0f) {
+        userInfo[@"progress"] = @(MIN(1.0f, progress));
+    }
+    [NSNotificationCenter.defaultCenter postNotificationName:LauncherPlayStateDidChangeNotification object:self userInfo:userInfo];
+}
+
 // Invoked by: startup, instance change event
 - (void)reloadProfileList {
     // Reload local version list
     [self fetchLocalVersionList];
     // Reload launcher_profiles.json
     [PLProfiles updateCurrent];
+    NSArray<NSString *> *keys = [self profileKeys];
     [self.versionPickerView reloadAllComponents];
-    // Reload selected profile info
-    self.profileSelectedAt = [PLProfiles.current.profiles.allKeys indexOfObject:PLProfiles.current.selectedProfileName];
-    if (self.profileSelectedAt == -1) {
-        // This instance has no profiles?
+
+    if (keys.count == 0) {
+        self.profileSelectedAt = -1;
+        self.versionTextField.text = @"";
+        self.buttonInstall.enabled = NO;
         return;
     }
+
+    NSString *selectedKey = [self selectedProfileKey];
+    if (selectedKey.length == 0) {
+        selectedKey = keys.firstObject;
+    }
+    if (![PLProfiles.current.selectedProfileName isEqualToString:selectedKey]) {
+        PLProfiles.current.selectedProfileName = selectedKey;
+    }
+
+    // Reload selected profile info
+    self.profileSelectedAt = (int)[keys indexOfObject:selectedKey];
+    if (self.profileSelectedAt < 0 || self.profileSelectedAt >= (int)keys.count) {
+        self.profileSelectedAt = 0;
+    }
+    self.buttonInstall.enabled = YES;
     [self.versionPickerView selectRow:self.profileSelectedAt inComponent:0 animated:NO];
     [self pickerView:self.versionPickerView didSelectRow:self.profileSelectedAt inComponent:0];
 }
@@ -273,11 +354,15 @@ static void applyPrimaryButtonStyle(UIButton *button) {
         self.buttonInstall.enabled = enabled;
     }
     UIApplication.sharedApplication.idleTimerDisabled = !enabled;
+    if (enabled) {
+        [self notifyPlayStateWithText:nil progress:-1.0f active:NO];
+    }
 }
 
 - (void)launchMinecraft:(id)sender {
-    if (!self.versionTextField.hasText) {
-        [self.versionTextField becomeFirstResponder];
+    NSDictionary *selectedProfile = [self selectedProfileDictionary];
+    if (![selectedProfile isKindOfClass:NSDictionary.class]) {
+        showDialog(localize(@"Error", nil), @"No valid profile selected.");
         return;
     }
 
@@ -289,9 +374,21 @@ static void applyPrimaryButtonStyle(UIButton *button) {
         return;
     }
 
-    [self setInteractionEnabled:NO forDownloading:YES];
+    NSString *selectedKey = [self selectedProfileKey];
+    if (selectedKey.length > 0 && ![PLProfiles.current.selectedProfileName isEqualToString:selectedKey]) {
+        PLProfiles.current.selectedProfileName = selectedKey;
+    }
 
-    NSString *versionId = PLProfiles.current.profiles[self.versionTextField.text][@"lastVersionId"];
+    NSString *versionId = selectedProfile[@"lastVersionId"];
+    if (![versionId isKindOfClass:NSString.class] || versionId.length == 0) {
+        showDialog(localize(@"Error", nil), @"This profile has no version selected.");
+        [self setInteractionEnabled:YES forDownloading:YES];
+        return;
+    }
+
+    [self setInteractionEnabled:NO forDownloading:YES];
+    [self notifyPlayStateWithText:localize(@"Downloading resources...", nil) progress:0.0f active:YES];
+
     NSDictionary *object = [remoteVersionList filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"(id == %@)", versionId]].firstObject;
     if (!object) {
         object = @{
@@ -306,6 +403,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
         self.task.handleError = ^{
             dispatch_async(dispatch_get_main_queue(), ^{
                 [weakSelf setInteractionEnabled:YES forDownloading:YES];
+                [weakSelf notifyPlayStateWithText:localize(@"Error", nil) progress:-1.0f active:NO];
                 weakSelf.task = nil;
                 weakSelf.progressVC = nil;
             });
@@ -367,6 +465,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
 
     dispatch_async(dispatch_get_main_queue(), ^{
         self.progressText.text = progress.localizedAdditionalDescription;
+        [self notifyPlayStateWithText:self.progressText.text progress:self.task.progress.fractionCompleted active:!progress.finished];
 
         if (!progress.finished) return;
         [self.progressVC dismissModalViewControllerAnimated:NO];
@@ -380,6 +479,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
         } else {
             [self reloadProfileList];
         }
+        [self notifyPlayStateWithText:localize(@"Play", nil) progress:1.0f active:NO];
         self.task = nil;
         [self setInteractionEnabled:YES forDownloading:YES];
     });
@@ -397,6 +497,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
         self.task.handleError = ^{
             dispatch_async(dispatch_get_main_queue(), ^{
                 [weakSelf setInteractionEnabled:YES forDownloading:YES];
+                [weakSelf notifyPlayStateWithText:localize(@"Error", nil) progress:-1.0f active:NO];
                 weakSelf.task = nil;
                 weakSelf.progressVC = nil;
             });
@@ -472,11 +573,17 @@ static void applyPrimaryButtonStyle(UIButton *button) {
 
 #pragma mark - UIPickerView stuff
 - (void)pickerView:(PLPickerView *)pickerView didSelectRow:(NSInteger)row inComponent:(NSInteger)component {
-    self.profileSelectedAt = row;
+    NSArray<NSString *> *keys = [self profileKeys];
+    if (row < 0 || row >= keys.count) {
+        return;
+    }
+
+    self.profileSelectedAt = (int)row;
+    NSString *key = keys[row];
     //((UIImageView *)self.versionTextField.leftView).image = [pickerView imageAtRow:row column:component];
     ((UIImageView *)self.versionTextField.leftView).image = [pickerView imageAtRow:row column:component];
-    self.versionTextField.text = [self pickerView:pickerView titleForRow:row forComponent:component];
-    PLProfiles.current.selectedProfileName = self.versionTextField.text;
+    self.versionTextField.text = [self displayNameForProfileKey:key];
+    PLProfiles.current.selectedProfileName = key;
 }
 
 - (NSInteger)numberOfComponentsInPickerView:(UIPickerView *)pickerView {
@@ -484,16 +591,26 @@ static void applyPrimaryButtonStyle(UIButton *button) {
 }
 
 - (NSInteger)pickerView:(UIPickerView *)pickerView numberOfRowsInComponent:(NSInteger)component {
-    return PLProfiles.current.profiles.count;
+    return [self profileKeys].count;
 }
 
 - (NSString *)pickerView:(UIPickerView *)pickerView titleForRow:(NSInteger)row forComponent:(NSInteger)component {
-    return PLProfiles.current.profiles.allValues[row][@"name"];
+    NSArray<NSString *> *keys = [self profileKeys];
+    if (row < 0 || row >= keys.count) {
+        return @"";
+    }
+    return [self displayNameForProfileKey:keys[row]];
 }
 
 - (void)pickerView:(UIPickerView *)pickerView enumerateImageView:(UIImageView *)imageView forRow:(NSInteger)row forComponent:(NSInteger)component {
     UIImage *fallbackImage = [[UIImage imageNamed:@"DefaultProfile"] _imageWithSize:CGSizeMake(40, 40)];
-    NSString *urlString = PLProfiles.current.profiles.allValues[row][@"icon"];
+    NSArray<NSString *> *keys = [self profileKeys];
+    if (row < 0 || row >= keys.count) {
+        imageView.image = fallbackImage;
+        return;
+    }
+    NSDictionary *profile = PLProfiles.current.profiles[keys[row]];
+    NSString *urlString = [profile isKindOfClass:NSDictionary.class] ? profile[@"icon"] : nil;
     [imageView setImageWithURL:[NSURL URLWithString:urlString] placeholderImage:fallbackImage];
 }
 

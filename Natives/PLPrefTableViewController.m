@@ -31,8 +31,8 @@
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    self.tableView.rowHeight = 52.0;
-    self.tableView.estimatedRowHeight = 52.0;
+    self.tableView.rowHeight = 50.0;
+    self.tableView.estimatedRowHeight = 50.0;
     self.tableView.sectionHeaderHeight = 28.0;
     self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedSectionFooterHeight = 20.0;
@@ -112,11 +112,14 @@
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellID];
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:cellStyle reuseIdentifier:cellID];
-        cell.textLabel.adjustsFontSizeToFitWidth = YES;
+        cell.textLabel.adjustsFontSizeToFitWidth = NO;
+        cell.textLabel.minimumScaleFactor = 0.85;
         cell.textLabel.numberOfLines = 1;
         cell.textLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         cell.detailTextLabel.numberOfLines = 1;
         cell.detailTextLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        cell.detailTextLabel.adjustsFontSizeToFitWidth = YES;
+        cell.detailTextLabel.minimumScaleFactor = 0.85;
     }
     // Reset cell properties, as it could be reused
     cell.accessoryType = UITableViewCellAccessoryNone;
@@ -143,8 +146,8 @@
     }
 
     // Set general properties
-    cell.textLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    cell.detailTextLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
+    cell.textLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
     BOOL destructive = [item[@"destructive"] boolValue];
     cell.imageView.tintColor = destructive ? UIColor.systemRedColor : nil;
     cell.imageView.image = [UIImage systemImageNamed:item[@"icon"]];
@@ -185,9 +188,10 @@
     self.typeTextField = ^void(UITableViewCell *cell, NSString *section, NSString *key, NSDictionary *item) {
         Class cls = item[@"customClass"];
         if (!cls) cls = UITextField.class;
-        UITextField *view = [[cls alloc] initWithFrame:CGRectMake(0, 0, cell.bounds.size.width / 2.1, cell.bounds.size.height)];
+        CGFloat width = MIN(190.0, MAX(126.0, cell.bounds.size.width * 0.46));
+        UITextField *view = [[cls alloc] initWithFrame:CGRectMake(0, 0, width, cell.bounds.size.height - 8.0)];
         [view addTarget:view action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
-        view.adjustsFontSizeToFitWidth = YES;
+        view.adjustsFontSizeToFitWidth = NO;
         view.autocorrectionType = UITextAutocorrectionTypeNo;
         view.autocapitalizationType = UITextAutocapitalizationTypeNone;
         view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleLeftMargin;
@@ -196,6 +200,8 @@
         //view.nonEditingLinebreakMode = NSLineBreakByCharWrapping;
         view.returnKeyType = UIReturnKeyDone;
         view.textAlignment = NSTextAlignmentLeft;
+        view.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightRegular];
+        view.clearButtonMode = UITextFieldViewModeWhileEditing;
         view.placeholder = localize((item[@"placeholder"] ? item[@"placeholder"] :
             [NSString stringWithFormat:@"preference.placeholder.%@", key]), nil);
         view.text = weakSelf.getPreference(section, key);

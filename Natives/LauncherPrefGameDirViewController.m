@@ -8,6 +8,7 @@
 
 @interface LauncherPrefGameDirViewController ()<UITextFieldDelegate>
 @property(nonatomic) NSMutableArray *array;
+@property(nonatomic) UITextField *footerInputField;
 @end
 
 @implementation LauncherPrefGameDirViewController
@@ -22,19 +23,27 @@
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    self.tableView.sectionFooterHeight = 50;
+    self.tableView.sectionFooterHeight = 58.0;
+    self.tableView.rowHeight = 58.0;
+    self.tableView.estimatedRowHeight = 58.0;
 
     NSString *path = [NSString stringWithFormat:@"%s/instances", getenv("POJAV_HOME")];
 
     NSFileManager *fm = NSFileManager.defaultManager;
     NSArray *files = [fm contentsOfDirectoryAtPath:path error:nil];
-    BOOL isDir;
     for (NSString *file in files) {
-        [fm fileExistsAtPath:path isDirectory:(&isDir)];
+        BOOL isDir = NO;
+        NSString *fullPath = [path stringByAppendingPathComponent:file];
+        [fm fileExistsAtPath:fullPath isDirectory:&isDir];
         if (isDir && ![file isEqualToString:@"default"]) {
             [self.array addObject:file];
         }
     }
+    [self.array sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+    if ([self.array containsObject:@"default"]) {
+        [self.array removeObject:@"default"];
+    }
+    [self.array insertObject:@"default" atIndex:0];
 }
 
 - (void)changeSelectionTo:(NSString *)name {
@@ -57,41 +66,36 @@
 
 - (UITableViewCell *)tableView:(nonnull UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    UITextField *view;
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell"];
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"cell"];
-        view = [[UITextField alloc] initWithFrame:CGRectMake(20, 10, (cell.bounds.size.width-40)/2, cell.bounds.size.height-20)];
-        [view addTarget:view action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
-        view.autocorrectionType = UITextAutocorrectionTypeNo;
-        view.autocapitalizationType = UITextAutocapitalizationTypeNone;
-        view.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-        view.delegate = self;
-        view.returnKeyType = UIReturnKeyDone;
-        view.userInteractionEnabled = indexPath.row != 0;
-        [cell.contentView addSubview:view];
-        cell.detailTextLabel.text = @"...";
+        cell.textLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+        cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
+        cell.detailTextLabel.textColor = [UIColor colorWithWhite:0.82 alpha:1.0];
+        cell.textLabel.numberOfLines = 1;
+        cell.detailTextLabel.numberOfLines = 1;
     }
-    view = cell.contentView.subviews.firstObject;
-    view.placeholder = self.array[indexPath.row];
-    view.text = self.array[indexPath.row];
-    cell.textLabel.hidden = YES;
-    cell.textLabel.text = view.text;
+    NSString *directoryName = self.array[indexPath.row];
+    cell.textLabel.text = directoryName;
+    cell.detailTextLabel.text = @"...";
+    cell.accessoryType = UITableViewCellAccessoryNone;
+    cell.selectionStyle = UITableViewCellSelectionStyleDefault;
 
     // Calculate the instance size
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         unsigned long long folderSize = 0;
-        NSString *directory = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), self.array[indexPath.row]];
+        NSString *directory = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), directoryName];
         [NSFileManager.defaultManager nr_getAllocatedSize:&folderSize ofDirectoryAtURL:[NSURL fileURLWithPath:directory] error:nil];
         dispatch_async(dispatch_get_main_queue(), ^{
-            cell.detailTextLabel.text = [NSByteCountFormatter stringFromByteCount:folderSize countStyle:NSByteCountFormatterCountStyleMemory];
+            UITableViewCell *target = [tableView cellForRowAtIndexPath:indexPath];
+            if (target != nil && [target.textLabel.text isEqualToString:directoryName]) {
+                target.detailTextLabel.text = [NSByteCountFormatter stringFromByteCount:folderSize countStyle:NSByteCountFormatterCountStyleMemory];
+            }
         });
     });
 
-    if ([getPrefObject(@"general.game_directory") isEqualToString:self.array[indexPath.row]]) {
+    if ([getPrefObject(@"general.game_directory") isEqualToString:directoryName]) {
         cell.accessoryType = UITableViewCellAccessoryCheckmark;
-    } else {
-        cell.accessoryType = UITableViewCellAccessoryNone;
     }
     
     return cell;
@@ -100,14 +104,19 @@
 - (UIView *)tableView:(UITableView *)tableView 
 viewForFooterInSection:(NSInteger)section
 {
-    UITextField *view = [[UITextField alloc] init];
+    (void)tableView;
+    (void)section;
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 58.0)];
+    UITextField *view = [[UITextField alloc] initWithFrame:CGRectInset(container.bounds, 0, 8.0)];
     [view addTarget:view action:@selector(resignFirstResponder) forControlEvents:UIControlEventEditingDidEndOnExit];
     view.autocorrectionType = UITextAutocorrectionTypeNo;
     view.autocapitalizationType = UITextAutocapitalizationTypeNone;
     view.delegate = self;
     view.placeholder = localize(@"preference.multidir.add_directory", nil);
     view.returnKeyType = UIReturnKeyDone;
-    return view;
+    self.footerInputField = view;
+    [container addSubview:view];
+    return container;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -168,8 +177,8 @@ viewForFooterInSection:(NSInteger)section
             image:[UIImage systemImageNamed:@"pencil"]
             identifier:nil
             handler:^(UIAction *action) {
-                UITableViewCell *view = [self.tableView cellForRowAtIndexPath:indexPath];
-                [view.contentView.subviews.firstObject becomeFirstResponder];
+                (void)action;
+                [self promptRenameAtIndexPath:indexPath];
             }
         ];
 
@@ -193,6 +202,46 @@ viewForFooterInSection:(NSInteger)section
             return [UIMenu menuWithTitle:self.array[indexPath.row] children:menuItems];
         }
     ];
+}
+
+- (void)promptRenameAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row <= 0 || indexPath.row >= self.array.count) {
+        return;
+    }
+    NSString *currentName = self.array[indexPath.row];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"Rename", nil)
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.autocorrectionType = UITextAutocorrectionTypeNo;
+        field.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        field.returnKeyType = UIReturnKeyDone;
+        field.text = currentName;
+    }];
+
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        (void)action;
+        NSString *newName = [[alert.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] copy];
+        if (newName.length == 0 || [newName isEqualToString:currentName]) {
+            return;
+        }
+
+        NSString *source = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), currentName];
+        NSString *dest = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), newName];
+        NSError *error = nil;
+        [NSFileManager.defaultManager moveItemAtPath:source toPath:dest error:&error];
+        if (error != nil) {
+            showDialog(localize(@"Error", nil), error.localizedDescription);
+            return;
+        }
+        self.array[indexPath.row] = newName;
+        [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+        if ([getPrefObject(@"general.game_directory") isEqualToString:currentName]) {
+            [self changeSelectionTo:newName];
+        }
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
@@ -247,56 +296,45 @@ viewForFooterInSection:(NSInteger)section
 #pragma mark UITextField
 
 - (void)textFieldDidEndEditing:(UITextField *)sender {
-    BOOL isFooterView = sender.superview == self.tableView;
-    if (!sender.hasText || [sender.text isEqualToString:sender.placeholder]) {
-        if (isFooterView) {
-            return;
-        }
-        sender.text = sender.placeholder;
+    if (sender != self.footerInputField) {
+        return;
+    }
+
+    NSString *name = [[sender.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] copy];
+    if (name.length == 0) {
+        sender.text = @"";
+        return;
+    }
+
+    if ([self.array containsObject:name]) {
+        sender.text = @"";
+        showDialog(localize(@"Error", nil), @"Directory already exists.");
         return;
     }
 
     NSError *error;
-
-    NSString *dest = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), sender.text];
-    if (isFooterView) {
-        [NSFileManager.defaultManager createDirectoryAtPath:dest withIntermediateDirectories:NO attributes:nil error:&error];
-    } else {
-        NSString *source = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), sender.placeholder];
-        [NSFileManager.defaultManager moveItemAtPath:source toPath:dest error:&error];
-    }
+    NSString *dest = [NSString stringWithFormat:@"%s/instances/%@", getenv("POJAV_HOME"), name];
+    [NSFileManager.defaultManager createDirectoryAtPath:dest withIntermediateDirectories:NO attributes:nil error:&error];
 
     if (error == nil) {
-        [self changeSelectionTo:sender.text];
-        if (isFooterView) {
-            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.array.count inSection:0];
-            [self.array addObject:sender.text];
-            [self.tableView beginUpdates];
-            [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
-            [self.tableView endUpdates];
-            [self tableView:self.tableView didSelectRowAtIndexPath:indexPath];
-            // Clear text
-            sender.text = @"";
-        } else {
-            int index = [self.array indexOfObject:sender.placeholder];
-            self.array[index] = sender.placeholder = sender.text;
-            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:index inSection:0];
-            [self tableView:self.tableView didSelectRowAtIndexPath:indexPath];
-        }
+        NSIndexPath *indexPath = [NSIndexPath indexPathForRow:self.array.count inSection:0];
+        [self.array addObject:name];
+        [self.tableView beginUpdates];
+        [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationAutomatic];
+        [self.tableView endUpdates];
+        [self changeSelectionTo:name];
+        [self tableView:self.tableView didSelectRowAtIndexPath:indexPath];
+        sender.text = @"";
     } else {
-        // Restore to the previous name if we encounter an error
-        if (!isFooterView) {
-            sender.text = sender.placeholder;
-        }
+        sender.text = @"";
         showDialog(localize(@"Error", nil), error.localizedDescription);
     }
 }
 
 - (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
-    [textField invalidateIntrinsicContentSize];
-    CGRect frame = textField.frame;
-    frame.size.width = MAX(50, textField.intrinsicContentSize.width + 10);
-    textField.frame = frame;
+    (void)textField;
+    (void)range;
+    (void)string;
     return YES;
 }
 

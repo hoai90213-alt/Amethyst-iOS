@@ -607,18 +607,6 @@ void init_hookUIKitConstructor(void) {
     selectedCard.frame = insetBounds;
     selectedCard.layer.cornerRadius = 14.0;
     selectedCard.backgroundColor = [PLThemeAccentColor() colorWithAlphaComponent:0.3];
-
-    CGFloat nudgeLeft = 6.0;
-    if (self.textLabel.text.length > 0) {
-        CGRect textFrame = self.textLabel.frame;
-        textFrame.origin.x = MAX(12.0, textFrame.origin.x - nudgeLeft);
-        self.textLabel.frame = textFrame;
-    }
-    if (self.detailTextLabel.text.length > 0) {
-        CGRect detailFrame = self.detailTextLabel.frame;
-        detailFrame.origin.x = MAX(12.0, detailFrame.origin.x - nudgeLeft);
-        self.detailTextLabel.frame = detailFrame;
-    }
 }
 
 @end
