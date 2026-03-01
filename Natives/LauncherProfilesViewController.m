@@ -45,15 +45,16 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
 @implementation LauncherProfilesViewController
 
 static UIColor *ZenithCardColor(void) {
-    return [UIColor colorWithRed:12.0/255.0 green:19.0/255.0 blue:36.0/255.0 alpha:0.96];
+    UIColor *base = [UIColor colorWithRed:12.0/255.0 green:19.0/255.0 blue:36.0/255.0 alpha:0.96];
+    return PLThemeAccentBlendColor(base, 0.10);
 }
 
 static UIColor *ZenithBorderColor(void) {
-    return [UIColor colorWithRed:72.0/255.0 green:114.0/255.0 blue:170.0/255.0 alpha:0.65];
+    return [PLThemeAccentBlendColor(UIColor.whiteColor, 0.2) colorWithAlphaComponent:0.62];
 }
 
 static UIColor *ZenithAccentColor(void) {
-    return [UIColor colorWithRed:41.0/255.0 green:206.0/255.0 blue:255.0/255.0 alpha:1.0];
+    return PLThemeAccentResolvedColor();
 }
 
 - (instancetype)init {
@@ -73,10 +74,10 @@ static UIColor *ZenithAccentColor(void) {
 
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.tableView.rowHeight = 68.0;
-    self.tableView.sectionHeaderHeight = 38.0;
-    self.tableView.sectionFooterHeight = 18.0;
-    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 24, 0);
+    self.tableView.rowHeight = 56.0;
+    self.tableView.sectionHeaderHeight = 30.0;
+    self.tableView.sectionFooterHeight = 10.0;
+    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 12, 0);
 
     [self buildCreateButton];
     [self buildDashboardHeader];
@@ -140,18 +141,18 @@ static UIColor *ZenithAccentColor(void) {
 }
 
 - (void)buildDashboardHeader {
-    self.dashboardHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 292.0)];
+    self.dashboardHeaderView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, 236.0)];
     self.dashboardHeaderView.backgroundColor = UIColor.clearColor;
 
     self.heroCardView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroCardView.backgroundColor = ZenithCardColor();
-    self.heroCardView.layer.cornerRadius = 22.0;
+    self.heroCardView.layer.cornerRadius = 18.0;
     self.heroCardView.layer.borderWidth = 1.0;
     self.heroCardView.layer.borderColor = ZenithBorderColor().CGColor;
     self.heroCardView.layer.shadowColor = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:1.0].CGColor;
     self.heroCardView.layer.shadowOpacity = 0.5;
-    self.heroCardView.layer.shadowOffset = CGSizeMake(0, 10);
-    self.heroCardView.layer.shadowRadius = 22.0;
+    self.heroCardView.layer.shadowOffset = CGSizeMake(0, 6);
+    self.heroCardView.layer.shadowRadius = 16.0;
     if (@available(iOS 13.0, *)) {
         self.heroCardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -159,26 +160,26 @@ static UIColor *ZenithAccentColor(void) {
 
     self.heroImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
     self.heroImageView.contentMode = UIViewContentModeScaleAspectFill;
-    self.heroImageView.layer.cornerRadius = 18.0;
+    self.heroImageView.layer.cornerRadius = 14.0;
     self.heroImageView.layer.borderWidth = 1.0;
     self.heroImageView.layer.borderColor = [ZenithAccentColor() colorWithAlphaComponent:0.65].CGColor;
     self.heroImageView.clipsToBounds = YES;
     [self.heroCardView addSubview:self.heroImageView];
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroTitleLabel.font = [UIFont systemFontOfSize:20.0 weight:UIFontWeightHeavy];
+    self.heroTitleLabel.font = [UIFont systemFontOfSize:17.0 weight:UIFontWeightHeavy];
     self.heroTitleLabel.textColor = UIColor.whiteColor;
     self.heroTitleLabel.numberOfLines = 2;
     [self.heroCardView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    self.heroSubtitleLabel.textColor = [UIColor colorWithRed:177.0/255.0 green:226.0/255.0 blue:1.0 alpha:1.0];
+    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.heroSubtitleLabel.textColor = [PLThemeAccentBlendColor(UIColor.whiteColor, 0.12) colorWithAlphaComponent:0.92];
     self.heroSubtitleLabel.numberOfLines = 1;
     [self.heroCardView addSubview:self.heroSubtitleLabel];
 
     self.heroMetaLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroMetaLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    self.heroMetaLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     self.heroMetaLabel.textColor = [UIColor colorWithWhite:0.82 alpha:1.0];
     [self.heroCardView addSubview:self.heroMetaLabel];
 
@@ -212,21 +213,21 @@ static UIColor *ZenithAccentColor(void) {
     }
 
     CGFloat horizontalPadding = 16.0;
-    CGFloat heroHeight = 270.0;
+    CGFloat heroHeight = 214.0;
     CGFloat heroWidth = MAX(0.0, tableWidth - horizontalPadding * 2.0);
 
-    self.dashboardHeaderView.frame = CGRectMake(0, 0, tableWidth, heroHeight + 16.0);
-    self.heroCardView.frame = CGRectMake(horizontalPadding, 8.0, heroWidth, heroHeight);
+    self.dashboardHeaderView.frame = CGRectMake(0, 0, tableWidth, heroHeight + 10.0);
+    self.heroCardView.frame = CGRectMake(horizontalPadding, 6.0, heroWidth, heroHeight);
 
-    self.heroImageView.frame = CGRectMake(16.0, 18.0, 82.0, 82.0);
+    self.heroImageView.frame = CGRectMake(14.0, 14.0, 66.0, 66.0);
 
     CGFloat titleX = CGRectGetMaxX(self.heroImageView.frame) + 14.0;
     CGFloat textWidth = MAX(80.0, heroWidth - titleX - 14.0);
-    self.heroTitleLabel.frame = CGRectMake(titleX, 18.0, textWidth, 52.0);
-    self.heroSubtitleLabel.frame = CGRectMake(titleX, 79.0, textWidth, 18.0);
-    self.heroMetaLabel.frame = CGRectMake(titleX, 102.0, textWidth, 18.0);
+    self.heroTitleLabel.frame = CGRectMake(titleX, 15.0, textWidth, 42.0);
+    self.heroSubtitleLabel.frame = CGRectMake(titleX, 58.0, textWidth, 16.0);
+    self.heroMetaLabel.frame = CGRectMake(titleX, 78.0, textWidth, 16.0);
 
-    CGFloat controlY = heroHeight - 58.0;
+    CGFloat controlY = heroHeight - 46.0;
     CGFloat contentWidth = MAX(0.0, heroWidth - 32.0);
     CGFloat launchWidth = floor(contentWidth * 0.52);
     CGFloat sideWidth = floor((contentWidth - launchWidth - 16.0) / 2.0);
@@ -236,9 +237,9 @@ static UIColor *ZenithAccentColor(void) {
         launchWidth = MAX(120.0, contentWidth - (sideWidth * 2.0) - 16.0);
     }
 
-    self.launchButton.frame = CGRectMake(16.0, controlY, launchWidth, 44.0);
-    self.editButton.frame = CGRectMake(CGRectGetMaxX(self.launchButton.frame) + 8.0, controlY, sideWidth, 44.0);
-    self.directoryButton.frame = CGRectMake(CGRectGetMaxX(self.editButton.frame) + 8.0, controlY, sideWidth, 44.0);
+    self.launchButton.frame = CGRectMake(16.0, controlY, launchWidth, 36.0);
+    self.editButton.frame = CGRectMake(CGRectGetMaxX(self.launchButton.frame) + 8.0, controlY, sideWidth, 36.0);
+    self.directoryButton.frame = CGRectMake(CGRectGetMaxX(self.editButton.frame) + 8.0, controlY, sideWidth, 36.0);
 
     [self styleHeroButtons];
 
@@ -251,9 +252,9 @@ static UIColor *ZenithAccentColor(void) {
     [self styleSecondaryButton:self.editButton symbol:@"square.and.pencil"];
     [self styleSecondaryButton:self.directoryButton symbol:@"folder"];
 
-    self.launchButton.layer.cornerRadius = 12.0;
+    self.launchButton.layer.cornerRadius = 10.0;
     self.launchButton.layer.borderWidth = 1.0;
-    self.launchButton.layer.borderColor = [UIColor colorWithRed:110.0/255.0 green:224.0/255.0 blue:1.0 alpha:0.8].CGColor;
+    self.launchButton.layer.borderColor = PLThemeAccentBlendColor(UIColor.whiteColor, 0.16).CGColor;
     self.launchButton.layer.shadowColor = [ZenithAccentColor() colorWithAlphaComponent:0.55].CGColor;
     self.launchButton.layer.shadowOffset = CGSizeMake(0, 8);
     self.launchButton.layer.shadowOpacity = 0.34;
@@ -262,7 +263,7 @@ static UIColor *ZenithAccentColor(void) {
         self.launchButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.launchButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.launchButton.titleLabel.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
+    self.launchButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
 
     CAGradientLayer *gradient = nil;
     for (CALayer *layer in self.launchButton.layer.sublayers) {
@@ -276,12 +277,12 @@ static UIColor *ZenithAccentColor(void) {
         gradient.name = @"zenith.launch.gradient";
         gradient.startPoint = CGPointMake(0.0, 0.5);
         gradient.endPoint = CGPointMake(1.0, 0.5);
-        gradient.colors = @[
-            (id)[UIColor colorWithRed:38.0/255.0 green:192.0/255.0 blue:1.0 alpha:1.0].CGColor,
-            (id)[UIColor colorWithRed:59.0/255.0 green:111.0/255.0 blue:1.0 alpha:1.0].CGColor
-        ];
         [self.launchButton.layer insertSublayer:gradient atIndex:0];
     }
+    gradient.colors = @[
+        (id)PLThemeAccentBlendColor(UIColor.whiteColor, 0.16).CGColor,
+        (id)PLThemeAccentBlendColor([UIColor colorWithRed:23.0/255.0 green:33.0/255.0 blue:52.0/255.0 alpha:1.0], 0.34).CGColor
+    ];
     gradient.frame = self.launchButton.bounds;
     gradient.cornerRadius = self.launchButton.layer.cornerRadius;
 }
@@ -298,11 +299,11 @@ static UIColor *ZenithAccentColor(void) {
         button.tintColor = [UIColor colorWithWhite:0.95 alpha:1.0];
     }
     [button setTitleColor:[UIColor colorWithWhite:0.94 alpha:1.0] forState:UIControlStateNormal];
-    button.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    button.backgroundColor = [UIColor colorWithRed:23.0/255.0 green:37.0/255.0 blue:62.0/255.0 alpha:0.9];
-    button.layer.cornerRadius = 12.0;
+    button.titleLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    button.backgroundColor = [PLThemeAccentBlendColor([UIColor colorWithRed:23.0/255.0 green:37.0/255.0 blue:62.0/255.0 alpha:0.9], 0.18) colorWithAlphaComponent:0.95];
+    button.layer.cornerRadius = 10.0;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [UIColor colorWithRed:84.0/255.0 green:133.0/255.0 blue:1.0 alpha:0.45].CGColor;
+    button.layer.borderColor = PLThemeAccentBlendColor(UIColor.whiteColor, 0.12).CGColor;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -636,10 +637,10 @@ static UIColor *ZenithAccentColor(void) {
 
     cell.textLabel.numberOfLines = 1;
     cell.textLabel.textColor = UIColor.whiteColor;
-    cell.textLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    cell.textLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     cell.detailTextLabel.numberOfLines = 2;
     cell.detailTextLabel.textColor = [UIColor colorWithWhite:0.84 alpha:1.0];
-    cell.detailTextLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    cell.detailTextLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     cell.accessoryView = nil;
     cell.userInteractionEnabled = YES;
     cell.selectionStyle = UITableViewCellSelectionStyleDefault;

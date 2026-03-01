@@ -8,6 +8,8 @@ extern NSNotificationName UIPresentationControllerPresentationTransitionWillBegi
 @end
 
 void PLRefreshThemeAppearance(void);
+UIColor *PLThemeAccentResolvedColor(void);
+UIColor *PLThemeAccentBlendColor(UIColor *target, CGFloat ratio);
 
 @interface UIImageView(hook)
 @property(nonatomic) BOOL isSizeFixed;

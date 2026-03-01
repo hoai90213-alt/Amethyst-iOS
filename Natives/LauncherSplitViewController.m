@@ -3,6 +3,7 @@
 #import "LauncherProfilesViewController.h"
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
+#import "UIKit+hook.h"
 #import "utils.h"
 
 extern NSMutableDictionary *prefDict;
@@ -15,7 +16,7 @@ extern NSMutableDictionary *prefDict;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = [UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0];
+    self.view.backgroundColor = PLThemeAccentBlendColor([UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0], 0.08);
     if ([getPrefObject(@"control.control_safe_area") length] == 0) {
         setPrefObject(@"control.control_safe_area", NSStringFromUIEdgeInsets(getDefaultSafeArea()));
     }
@@ -31,6 +32,11 @@ extern NSMutableDictionary *prefDict;
     self.preferredPrimaryColumnWidthFraction = 0.62;
     self.minimumPrimaryColumnWidth = 320.0;
     self.maximumPrimaryColumnWidth = self.view.bounds.size.width * 0.74;
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    self.view.backgroundColor = PLThemeAccentBlendColor([UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0], 0.08);
 }
 
 - (void)splitViewController:(UISplitViewController *)svc willChangeToDisplayMode:(UISplitViewControllerDisplayMode)displayMode {

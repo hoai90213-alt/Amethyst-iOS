@@ -29,7 +29,10 @@ static void applyPrimaryButtonStyle(UIButton *button) {
     if (!button) {
         return;
     }
-    UIColor *accent = [UIColor colorWithRed:19.0/255.0 green:212.0/255.0 blue:1.0 alpha:1.0];
+    UIColor *accent = PLThemeAccentResolvedColor();
+    UIColor *gradientStart = PLThemeAccentBlendColor(UIColor.whiteColor, 0.16);
+    UIColor *gradientEnd = PLThemeAccentBlendColor([UIColor colorWithRed:24.0/255.0 green:33.0/255.0 blue:52.0/255.0 alpha:1.0], 0.35);
+    UIColor *borderColor = PLThemeAccentBlendColor(UIColor.whiteColor, 0.2);
     CAGradientLayer *gradient = nil;
     for (CALayer *layer in button.layer.sublayers) {
         if ([layer.name isEqualToString:@"pl.launcher.play.gradient"] && [layer isKindOfClass:CAGradientLayer.class]) {
@@ -42,19 +45,16 @@ static void applyPrimaryButtonStyle(UIButton *button) {
         gradient.name = @"pl.launcher.play.gradient";
         gradient.startPoint = CGPointMake(0.0, 0.5);
         gradient.endPoint = CGPointMake(1.0, 0.5);
-        gradient.colors = @[
-            (id)[UIColor colorWithRed:20.0/255.0 green:196.0/255.0 blue:255.0/255.0 alpha:1.0].CGColor,
-            (id)[UIColor colorWithRed:76.0/255.0 green:110.0/255.0 blue:1.0 alpha:1.0].CGColor
-        ];
         [button.layer insertSublayer:gradient atIndex:0];
     }
+    gradient.colors = @[(id)gradientStart.CGColor, (id)gradientEnd.CGColor];
 
     button.layer.cornerRadius = 12.0;
     gradient.frame = button.bounds;
     gradient.cornerRadius = button.layer.cornerRadius;
     button.backgroundColor = UIColor.clearColor;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [UIColor colorWithRed:99.0/255.0 green:206.0/255.0 blue:1.0 alpha:0.9].CGColor;
+    button.layer.borderColor = [borderColor colorWithAlphaComponent:0.9].CGColor;
     button.layer.shadowColor = [accent colorWithAlphaComponent:0.6].CGColor;
     button.layer.shadowOffset = CGSizeMake(0, 8);
     button.layer.shadowOpacity = 0.32;
@@ -124,7 +124,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
     self.progressText = [[UILabel alloc] initWithFrame:self.versionTextField.frame];
     self.progressText.adjustsFontSizeToFitWidth = YES;
     self.progressText.autoresizingMask = AUTORESIZE_MASKS;
-    self.progressText.font = [self.progressText.font fontWithSize:16];
+    self.progressText.font = [self.progressText.font fontWithSize:14];
     self.progressText.textAlignment = NSTextAlignmentCenter;
     self.progressText.userInteractionEnabled = NO;
     
@@ -510,6 +510,7 @@ static void applyPrimaryButtonStyle(UIButton *button) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    applyPrimaryButtonStyle(self.buttonInstall);
     [sidebarViewController updateAccountInfo];
 }
 

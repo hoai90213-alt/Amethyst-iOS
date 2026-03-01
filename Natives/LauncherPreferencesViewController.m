@@ -44,7 +44,8 @@
     };
     
     self.hasDetail = YES;
-    self.prefDetailVisible = self.navigationController == nil;
+    self.prefDetailVisible = NO;
+    self.prefSectionsVisible = NO;
     
     self.prefSections = @[@"general", @"video", @"control", @"java", @"debug"];
 

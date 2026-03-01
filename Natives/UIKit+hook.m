@@ -91,19 +91,23 @@ static UIColor *PLThemeBlendColor(UIColor *base, UIColor *target, CGFloat ratio)
 }
 
 static UIColor *PLThemeBackgroundStart(UITraitCollection *__unused traits) {
-    return [UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0];
+    UIColor *base = [UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0];
+    return PLThemeBlendColor(base, PLThemeAccentColor(), 0.08);
 }
 
 static UIColor *PLThemeBackgroundEnd(UITraitCollection *__unused traits) {
-    return [UIColor colorWithRed:17.0/255.0 green:27.0/255.0 blue:49.0/255.0 alpha:1.0];
+    UIColor *base = [UIColor colorWithRed:17.0/255.0 green:27.0/255.0 blue:49.0/255.0 alpha:1.0];
+    return PLThemeBlendColor(base, PLThemeAccentColor(), 0.20);
 }
 
 static UIColor *PLThemeBackgroundMid(UITraitCollection *__unused traits) {
-    return [UIColor colorWithRed:12.0/255.0 green:20.0/255.0 blue:38.0/255.0 alpha:1.0];
+    UIColor *base = [UIColor colorWithRed:12.0/255.0 green:20.0/255.0 blue:38.0/255.0 alpha:1.0];
+    return PLThemeBlendColor(base, PLThemeAccentColor(), 0.14);
 }
 
 static UIColor *PLThemeCardColor(UITraitCollection *__unused traits) {
-    return [UIColor colorWithRed:18.0/255.0 green:29.0/255.0 blue:50.0/255.0 alpha:0.94];
+    UIColor *base = [UIColor colorWithRed:18.0/255.0 green:29.0/255.0 blue:50.0/255.0 alpha:0.94];
+    return PLThemeBlendColor(base, PLThemeAccentColor(), 0.10);
 }
 
 static UIColor *PLThemeCardBorderColor(UITraitCollection *__unused traits) {
@@ -207,7 +211,9 @@ static void PLStyleTextField(UITextField *field) {
 
     BOOL wasStyled = [objc_getAssociatedObject(field, kThemeTextFieldStyledKey) boolValue];
     field.borderStyle = UITextBorderStyleNone;
-    field.backgroundColor = [UIColor colorWithRed:13.0/255.0 green:25.0/255.0 blue:45.0/255.0 alpha:0.88];
+    field.backgroundColor = [PLThemeBlendColor([UIColor colorWithRed:13.0/255.0 green:25.0/255.0 blue:45.0/255.0 alpha:0.88]
+                                              PLThemeAccentColor()
+                                              0.10] colorWithAlphaComponent:0.92];
     field.layer.cornerRadius = 10.0;
     field.layer.borderWidth = 1.0;
     field.layer.borderColor = [PLThemeAccentColor() colorWithAlphaComponent:0.4].CGColor;
@@ -258,7 +264,7 @@ static void PLStyleButton(UIButton *button) {
 
     button.backgroundColor = UIColor.clearColor;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [UIColor colorWithRed:99.0/255.0 green:206.0/255.0 blue:255.0/255.0 alpha:0.85].CGColor;
+    button.layer.borderColor = PLThemeBlendColor(PLThemeAccentColor(), UIColor.whiteColor, 0.20).CGColor;
     button.layer.shadowColor = [PLThemeAccentColor() colorWithAlphaComponent:0.65].CGColor;
     button.layer.shadowRadius = 12.0;
     button.layer.shadowOpacity = 0.32;
@@ -313,7 +319,7 @@ static void PLApplyGlobalAppearance(void) {
     if (@available(iOS 13.0, *)) {
         UINavigationBarAppearance *navigationBar = [[UINavigationBarAppearance alloc] init];
         [navigationBar configureWithOpaqueBackground];
-        navigationBar.backgroundColor = [UIColor colorWithRed:11.0/255.0 green:17.0/255.0 blue:31.0/255.0 alpha:1.0];
+        navigationBar.backgroundColor = PLThemeBlendColor([UIColor colorWithRed:11.0/255.0 green:17.0/255.0 blue:31.0/255.0 alpha:1.0], accent, 0.10);
         navigationBar.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.35];
         navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: UIColor.whiteColor};
         navigationBar.largeTitleTextAttributes = @{NSForegroundColorAttributeName: UIColor.whiteColor};
@@ -326,7 +332,7 @@ static void PLApplyGlobalAppearance(void) {
 
         UIToolbarAppearance *toolbar = [[UIToolbarAppearance alloc] init];
         [toolbar configureWithOpaqueBackground];
-        toolbar.backgroundColor = [UIColor colorWithRed:10.0/255.0 green:16.0/255.0 blue:29.0/255.0 alpha:1.0];
+        toolbar.backgroundColor = PLThemeBlendColor([UIColor colorWithRed:10.0/255.0 green:16.0/255.0 blue:29.0/255.0 alpha:1.0], accent, 0.08);
         toolbar.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.35];
 
         UIToolbar *toolbarAppearance = [UIToolbar appearance];
@@ -377,7 +383,7 @@ static void PLApplyGlobalAppearance(void) {
     ];
     self.glowLayer.colors = @[
         (id)[[accent colorWithAlphaComponent:0.34] CGColor],
-        (id)[[PLThemeBlendColor(accent, [UIColor colorWithRed:63.0/255.0 green:115.0/255.0 blue:1.0 alpha:1.0], 0.4)
+        (id)[[PLThemeBlendColor(accent, [UIColor colorWithRed:15.0/255.0 green:22.0/255.0 blue:38.0/255.0 alpha:1.0], 0.38)
               colorWithAlphaComponent:0.18] CGColor],
         (id)[UIColor.clearColor CGColor]
     ];
@@ -721,6 +727,14 @@ void init_hookUIKitConstructor(void) {
 
 UIViewController* currentVC() {
     return UIWindow.mainWindow.visibleViewController;
+}
+
+UIColor *PLThemeAccentResolvedColor(void) {
+    return PLThemeAccentColor();
+}
+
+UIColor *PLThemeAccentBlendColor(UIColor *target, CGFloat ratio) {
+    return PLThemeBlendColor(target, PLThemeAccentColor(), ratio);
 }
 
 void PLRefreshThemeAppearance(void) {

@@ -31,6 +31,10 @@
 
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.tableView.rowHeight = 52.0;
+    self.tableView.estimatedRowHeight = 52.0;
+    self.tableView.sectionHeaderHeight = 28.0;
+    self.tableView.sectionFooterHeight = 10.0;
     if (self.prefSections) {
         self.prefSectionsVisibility = [[NSMutableArray<NSNumber *> alloc] initWithCapacity:self.prefSections.count];
         for (int i = 0; i < self.prefSections.count; i++) {
@@ -108,10 +112,10 @@
     if (cell == nil) {
         cell = [[UITableViewCell alloc] initWithStyle:cellStyle reuseIdentifier:cellID];
         cell.textLabel.adjustsFontSizeToFitWidth = YES;
-        cell.textLabel.numberOfLines = 0;
-        cell.textLabel.lineBreakMode = NSLineBreakByWordWrapping;
-        cell.detailTextLabel.numberOfLines = 0;
-        cell.detailTextLabel.lineBreakMode = NSLineBreakByWordWrapping;
+        cell.textLabel.numberOfLines = 1;
+        cell.textLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        cell.detailTextLabel.numberOfLines = 1;
+        cell.detailTextLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     }
     // Reset cell properties, as it could be reused
     cell.accessoryType = UITableViewCellAccessoryNone;
@@ -138,6 +142,8 @@
     }
 
     // Set general properties
+    cell.textLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    cell.detailTextLabel.font = [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
     BOOL destructive = [item[@"destructive"] boolValue];
     cell.imageView.tintColor = destructive ? UIColor.systemRedColor : nil;
     cell.imageView.image = [UIImage systemImageNamed:item[@"icon"]];
