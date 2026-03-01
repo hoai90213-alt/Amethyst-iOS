@@ -63,18 +63,10 @@
     self = [super initWithReuseIdentifier:reuseIdentifier];
     if (self) {
         UIView *containerView = [[UIView alloc] init];
-        containerView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:38.0/255.0 green:45.0/255.0 blue:60.0/255.0 alpha:0.96]
-                : [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.94];
-        }];
+        containerView.backgroundColor = [UIColor colorWithRed:18.0/255.0 green:29.0/255.0 blue:50.0/255.0 alpha:0.96];
         containerView.layer.cornerRadius = 12.0;
         containerView.layer.borderWidth = 1.0;
-        containerView.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:88.0/255.0 green:102.0/255.0 blue:126.0/255.0 alpha:0.42]
-                : [UIColor colorWithRed:190.0/255.0 green:204.0/255.0 blue:223.0/255.0 alpha:0.72];
-        }].CGColor;
+        containerView.layer.borderColor = [UIColor colorWithRed:85.0/255.0 green:122.0/255.0 blue:170.0/255.0 alpha:0.55].CGColor;
         if (@available(iOS 13.0, *)) {
             containerView.layer.cornerCurve = kCACornerCurveContinuous;
         }
@@ -172,15 +164,13 @@
         self.navigationController.navigationBar.translucent = NO;
         UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
         [appearance configureWithOpaqueBackground];
-        appearance.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:26.0/255.0 green:31.0/255.0 blue:44.0/255.0 alpha:1.0]
-                : [UIColor colorWithRed:247.0/255.0 green:250.0/255.0 blue:255.0/255.0 alpha:1.0];
-        }];
-        appearance.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.08];
+        appearance.backgroundColor = [UIColor colorWithRed:11.0/255.0 green:17.0/255.0 blue:31.0/255.0 alpha:1.0];
+        appearance.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.35];
+        appearance.titleTextAttributes = @{NSForegroundColorAttributeName: UIColor.whiteColor};
         self.navigationController.navigationBar.standardAppearance = appearance;
         self.navigationController.navigationBar.compactAppearance = appearance;
         self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
+        self.navigationController.navigationBar.tintColor = [UIColor colorWithRed:19.0/255.0 green:212.0/255.0 blue:1.0 alpha:1.0];
     }
     
     if (@available(iOS 15.0, *)) {

@@ -1,4 +1,5 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <QuartzCore/QuartzCore.h>
 #import "authenticator/BaseAuthenticator.h"
 #import "AFNetworking.h"
 #import "ALTServerConnection.h"
@@ -28,14 +29,35 @@ static void applyPrimaryButtonStyle(UIButton *button) {
     if (!button) {
         return;
     }
-    UIColor *accent = [UIColor colorWithRed:49.0/255.0 green:132.0/255.0 blue:224.0/255.0 alpha:1.0];
-    button.backgroundColor = accent;
+    UIColor *accent = [UIColor colorWithRed:19.0/255.0 green:212.0/255.0 blue:1.0 alpha:1.0];
+    CAGradientLayer *gradient = nil;
+    for (CALayer *layer in button.layer.sublayers) {
+        if ([layer.name isEqualToString:@"pl.launcher.play.gradient"] && [layer isKindOfClass:CAGradientLayer.class]) {
+            gradient = (CAGradientLayer *)layer;
+            break;
+        }
+    }
+    if (!gradient) {
+        gradient = [CAGradientLayer layer];
+        gradient.name = @"pl.launcher.play.gradient";
+        gradient.startPoint = CGPointMake(0.0, 0.5);
+        gradient.endPoint = CGPointMake(1.0, 0.5);
+        gradient.colors = @[
+            (id)[UIColor colorWithRed:20.0/255.0 green:196.0/255.0 blue:255.0/255.0 alpha:1.0].CGColor,
+            (id)[UIColor colorWithRed:76.0/255.0 green:110.0/255.0 blue:1.0 alpha:1.0].CGColor
+        ];
+        [button.layer insertSublayer:gradient atIndex:0];
+    }
+
     button.layer.cornerRadius = 12.0;
+    gradient.frame = button.bounds;
+    gradient.cornerRadius = button.layer.cornerRadius;
+    button.backgroundColor = UIColor.clearColor;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [accent colorWithAlphaComponent:0.95].CGColor;
-    button.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.22].CGColor;
+    button.layer.borderColor = [UIColor colorWithRed:99.0/255.0 green:206.0/255.0 blue:1.0 alpha:0.9].CGColor;
+    button.layer.shadowColor = [accent colorWithAlphaComponent:0.6].CGColor;
     button.layer.shadowOffset = CGSizeMake(0, 8);
-    button.layer.shadowOpacity = 0.2;
+    button.layer.shadowOpacity = 0.32;
     button.layer.shadowRadius = 14.0;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;

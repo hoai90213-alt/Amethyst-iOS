@@ -15,7 +15,7 @@ extern NSMutableDictionary *prefDict;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = UIColor.systemGroupedBackgroundColor;
+    self.view.backgroundColor = [UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0];
     if ([getPrefObject(@"control.control_safe_area") length] == 0) {
         setPrefObject(@"control.control_safe_area", NSStringFromUIEdgeInsets(getDefaultSafeArea()));
     }

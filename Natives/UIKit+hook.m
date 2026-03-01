@@ -15,6 +15,7 @@ static void *kThemeCellSelectedKey = &kThemeCellSelectedKey;
 
 @interface PLThemeBackgroundView : UIView
 @property(nonatomic) CAGradientLayer *gradientLayer;
+@property(nonatomic) CAGradientLayer *glowLayer;
 @end
 
 @interface UIViewController(theme)
@@ -27,35 +28,35 @@ static void *kThemeCellSelectedKey = &kThemeCellSelectedKey;
 @end
 
 static UIColor *PLThemeAccentColor(void) {
-    return [UIColor colorWithRed:49.0/255.0 green:132.0/255.0 blue:224.0/255.0 alpha:1.0];
+    return [UIColor colorWithRed:19.0/255.0 green:212.0/255.0 blue:1.0 alpha:1.0];
 }
 
-static UIColor *PLThemeBackgroundStart(UITraitCollection *traits) {
-    if (traits.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        return [UIColor colorWithRed:20.0/255.0 green:24.0/255.0 blue:36.0/255.0 alpha:1.0];
-    }
-    return [UIColor colorWithRed:241.0/255.0 green:245.0/255.0 blue:252.0/255.0 alpha:1.0];
+static UIColor *PLThemeBackgroundStart(UITraitCollection *__unused traits) {
+    return [UIColor colorWithRed:7.0/255.0 green:12.0/255.0 blue:24.0/255.0 alpha:1.0];
 }
 
-static UIColor *PLThemeBackgroundEnd(UITraitCollection *traits) {
-    if (traits.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        return [UIColor colorWithRed:28.0/255.0 green:35.0/255.0 blue:48.0/255.0 alpha:1.0];
-    }
-    return [UIColor colorWithRed:229.0/255.0 green:236.0/255.0 blue:247.0/255.0 alpha:1.0];
+static UIColor *PLThemeBackgroundEnd(UITraitCollection *__unused traits) {
+    return [UIColor colorWithRed:17.0/255.0 green:27.0/255.0 blue:49.0/255.0 alpha:1.0];
 }
 
-static UIColor *PLThemeCardColor(UITraitCollection *traits) {
-    if (traits.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        return [UIColor colorWithRed:35.0/255.0 green:43.0/255.0 blue:58.0/255.0 alpha:0.92];
-    }
-    return [UIColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:0.92];
+static UIColor *PLThemeBackgroundMid(UITraitCollection *__unused traits) {
+    return [UIColor colorWithRed:12.0/255.0 green:20.0/255.0 blue:38.0/255.0 alpha:1.0];
 }
 
-static UIColor *PLThemeCardBorderColor(UITraitCollection *traits) {
-    if (traits.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        return [UIColor colorWithRed:83.0/255.0 green:97.0/255.0 blue:121.0/255.0 alpha:0.45];
-    }
-    return [UIColor colorWithRed:191.0/255.0 green:204.0/255.0 blue:223.0/255.0 alpha:0.65];
+static UIColor *PLThemeCardColor(UITraitCollection *__unused traits) {
+    return [UIColor colorWithRed:18.0/255.0 green:29.0/255.0 blue:50.0/255.0 alpha:0.94];
+}
+
+static UIColor *PLThemeCardBorderColor(UITraitCollection *__unused traits) {
+    return [UIColor colorWithRed:85.0/255.0 green:122.0/255.0 blue:170.0/255.0 alpha:0.55];
+}
+
+static UIColor *PLThemeButtonGradientStart(void) {
+    return [UIColor colorWithRed:20.0/255.0 green:196.0/255.0 blue:255.0/255.0 alpha:1.0];
+}
+
+static UIColor *PLThemeButtonGradientEnd(void) {
+    return [UIColor colorWithRed:76.0/255.0 green:110.0/255.0 blue:255.0/255.0 alpha:1.0];
 }
 
 void swizzle(Class class, SEL originalAction, SEL swizzledAction) {
@@ -130,23 +131,34 @@ static BOOL PLViewHasAncestorOfClass(UIView *view, Class targetClass) {
     return NO;
 }
 
+static CAGradientLayer *PLThemeButtonGradientLayer(UIButton *button) {
+    for (CALayer *layer in button.layer.sublayers) {
+        if ([layer.name isEqualToString:@"pl.theme.button.gradient"] && [layer isKindOfClass:CAGradientLayer.class]) {
+            return (CAGradientLayer *)layer;
+        }
+    }
+    return nil;
+}
+
 static void PLStyleTextField(UITextField *field) {
     if (!field || objc_getAssociatedObject(field, kThemeTextFieldStyledKey)) {
         return;
     }
 
     field.borderStyle = UITextBorderStyleNone;
-    field.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+    field.backgroundColor = [UIColor colorWithRed:13.0/255.0 green:25.0/255.0 blue:45.0/255.0 alpha:0.88];
     field.layer.cornerRadius = 10.0;
     field.layer.borderWidth = 1.0;
-    field.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    field.layer.borderColor = [PLThemeAccentColor() colorWithAlphaComponent:0.4].CGColor;
+    field.textColor = UIColor.whiteColor;
+    field.tintColor = PLThemeAccentColor();
     if (@available(iOS 13.0, *)) {
         field.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
     if (field.placeholder.length > 0) {
         field.attributedPlaceholder = [[NSAttributedString alloc] initWithString:field.placeholder attributes:@{
-            NSForegroundColorAttributeName: [UIColor colorWithWhite:1.0 alpha:0.72]
+            NSForegroundColorAttributeName: [UIColor colorWithWhite:0.86 alpha:0.58]
         }];
     }
 
@@ -154,7 +166,7 @@ static void PLStyleTextField(UITextField *field) {
 }
 
 static void PLStyleButton(UIButton *button) {
-    if (!button || objc_getAssociatedObject(button, kThemeButtonStyledKey)) {
+    if (!button) {
         return;
     }
     if (!button.currentTitle.length || button.bounds.size.height < 30.0) {
@@ -167,15 +179,38 @@ static void PLStyleButton(UIButton *button) {
         return;
     }
 
-    button.backgroundColor = [PLThemeAccentColor() colorWithAlphaComponent:0.16];
+    CAGradientLayer *gradient = PLThemeButtonGradientLayer(button);
+    if (!gradient) {
+        gradient = [CAGradientLayer layer];
+        gradient.name = @"pl.theme.button.gradient";
+        gradient.startPoint = CGPointMake(0.0, 0.5);
+        gradient.endPoint = CGPointMake(1.0, 0.5);
+        gradient.colors = @[
+            (id)PLThemeButtonGradientStart().CGColor,
+            (id)PLThemeButtonGradientEnd().CGColor
+        ];
+        [button.layer insertSublayer:gradient atIndex:0];
+    }
     button.layer.cornerRadius = 12.0;
+    gradient.frame = button.bounds;
+    gradient.cornerRadius = button.layer.cornerRadius;
+
+    button.backgroundColor = UIColor.clearColor;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [PLThemeAccentColor() colorWithAlphaComponent:0.45].CGColor;
+    button.layer.borderColor = [UIColor colorWithRed:99.0/255.0 green:206.0/255.0 blue:255.0/255.0 alpha:0.85].CGColor;
+    button.layer.shadowColor = [PLThemeAccentColor() colorWithAlphaComponent:0.65].CGColor;
+    button.layer.shadowRadius = 12.0;
+    button.layer.shadowOpacity = 0.32;
+    button.layer.shadowOffset = CGSizeMake(0, 5);
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [button setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
-    objc_setAssociatedObject(button, kThemeButtonStyledKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    button.tintColor = UIColor.whiteColor;
+
+    if (!objc_getAssociatedObject(button, kThemeButtonStyledKey)) {
+        objc_setAssociatedObject(button, kThemeButtonStyledKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
 }
 
 static void PLStyleControlsRecursively(UIView *rootView) {
@@ -204,9 +239,8 @@ static void PLApplyTableStyle(UITableView *tableView) {
         return;
     }
     tableView.backgroundColor = UIColor.clearColor;
-    if (tableView.separatorStyle != UITableViewCellSeparatorStyleNone) {
-        tableView.separatorColor = [UIColor colorWithWhite:1.0 alpha:0.12];
-    }
+    tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    tableView.indicatorStyle = UIScrollViewIndicatorStyleWhite;
 }
 
 static void PLApplyGlobalAppearance(void) {
@@ -218,14 +252,10 @@ static void PLApplyGlobalAppearance(void) {
     if (@available(iOS 13.0, *)) {
         UINavigationBarAppearance *navigationBar = [[UINavigationBarAppearance alloc] init];
         [navigationBar configureWithOpaqueBackground];
-        navigationBar.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:26.0/255.0 green:31.0/255.0 blue:44.0/255.0 alpha:1.0]
-                : [UIColor colorWithRed:247.0/255.0 green:250.0/255.0 blue:255.0/255.0 alpha:1.0];
-        }];
-        navigationBar.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.08];
-        navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: UIColor.labelColor};
-        navigationBar.largeTitleTextAttributes = @{NSForegroundColorAttributeName: UIColor.labelColor};
+        navigationBar.backgroundColor = [UIColor colorWithRed:11.0/255.0 green:17.0/255.0 blue:31.0/255.0 alpha:1.0];
+        navigationBar.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.35];
+        navigationBar.titleTextAttributes = @{NSForegroundColorAttributeName: UIColor.whiteColor};
+        navigationBar.largeTitleTextAttributes = @{NSForegroundColorAttributeName: UIColor.whiteColor};
 
         UINavigationBar *navigationAppearance = [UINavigationBar appearance];
         navigationAppearance.standardAppearance = navigationBar;
@@ -235,12 +265,8 @@ static void PLApplyGlobalAppearance(void) {
 
         UIToolbarAppearance *toolbar = [[UIToolbarAppearance alloc] init];
         [toolbar configureWithOpaqueBackground];
-        toolbar.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:24.0/255.0 green:30.0/255.0 blue:42.0/255.0 alpha:1.0]
-                : [UIColor colorWithRed:244.0/255.0 green:248.0/255.0 blue:254.0/255.0 alpha:1.0];
-        }];
-        toolbar.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.08];
+        toolbar.backgroundColor = [UIColor colorWithRed:10.0/255.0 green:16.0/255.0 blue:29.0/255.0 alpha:1.0];
+        toolbar.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.35];
 
         UIToolbar *toolbarAppearance = [UIToolbar appearance];
         toolbarAppearance.standardAppearance = toolbar;
@@ -250,7 +276,9 @@ static void PLApplyGlobalAppearance(void) {
         toolbarAppearance.tintColor = accent;
 
         UISegmentedControl *segmented = [UISegmentedControl appearance];
-        segmented.selectedSegmentTintColor = [accent colorWithAlphaComponent:0.25];
+        segmented.selectedSegmentTintColor = [accent colorWithAlphaComponent:0.3];
+        [segmented setTitleTextAttributes:@{NSForegroundColorAttributeName: [UIColor colorWithWhite:0.85 alpha:1.0]} forState:UIControlStateNormal];
+        [segmented setTitleTextAttributes:@{NSForegroundColorAttributeName: UIColor.whiteColor} forState:UIControlStateSelected];
     }
 }
 
@@ -267,7 +295,19 @@ static void PLApplyGlobalAppearance(void) {
     self.gradientLayer = [CAGradientLayer layer];
     self.gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     self.gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.gradientLayer.locations = @[@0.0, @0.55, @1.0];
     [self.layer addSublayer:self.gradientLayer];
+
+    self.glowLayer = [CAGradientLayer layer];
+    self.glowLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.glowLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.glowLayer.colors = @[
+        (id)[[PLThemeAccentColor() colorWithAlphaComponent:0.35] CGColor],
+        (id)[[UIColor colorWithRed:63.0/255.0 green:115.0/255.0 blue:1.0 alpha:0.16] CGColor],
+        (id)[[UIColor clearColor] CGColor]
+    ];
+    self.glowLayer.locations = @[@0.0, @0.35, @0.78];
+    [self.layer addSublayer:self.glowLayer];
     [self updateColors];
     return self;
 }
@@ -275,6 +315,7 @@ static void PLApplyGlobalAppearance(void) {
 - (void)updateColors {
     self.gradientLayer.colors = @[
         (id)PLThemeBackgroundStart(self.traitCollection).CGColor,
+        (id)PLThemeBackgroundMid(self.traitCollection).CGColor,
         (id)PLThemeBackgroundEnd(self.traitCollection).CGColor
     ];
 }
@@ -282,6 +323,7 @@ static void PLApplyGlobalAppearance(void) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     self.gradientLayer.frame = self.bounds;
+    self.glowLayer.frame = self.bounds;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
@@ -392,6 +434,10 @@ void init_hookUIKitConstructor(void) {
         return;
     }
 
+    if (@available(iOS 13.0, *)) {
+        self.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
+    }
+
     UIView *containerView = nil;
     if ([self isKindOfClass:UITableViewController.class]) {
         UITableView *tableView = ((UITableViewController *)self).tableView;
@@ -417,6 +463,9 @@ void init_hookUIKitConstructor(void) {
 
     backgroundView.frame = containerView.bounds;
     self.view.backgroundColor = UIColor.clearColor;
+    if ([containerView respondsToSelector:@selector(setTintColor:)]) {
+        containerView.tintColor = PLThemeAccentColor();
+    }
     PLStyleControlsRecursively(self.view);
 }
 
@@ -481,10 +530,14 @@ void init_hookUIKitConstructor(void) {
     backgroundCard.backgroundColor = PLThemeCardColor(self.traitCollection);
     backgroundCard.layer.borderWidth = 1.0;
     backgroundCard.layer.borderColor = PLThemeCardBorderColor(self.traitCollection).CGColor;
+    backgroundCard.layer.shadowColor = [UIColor colorWithRed:2.0/255.0 green:11.0/255.0 blue:26.0/255.0 alpha:1.0].CGColor;
+    backgroundCard.layer.shadowOpacity = 0.42;
+    backgroundCard.layer.shadowRadius = 10.0;
+    backgroundCard.layer.shadowOffset = CGSizeMake(0, 5);
 
     selectedCard.frame = insetBounds;
     selectedCard.layer.cornerRadius = 14.0;
-    selectedCard.backgroundColor = [PLThemeAccentColor() colorWithAlphaComponent:0.24];
+    selectedCard.backgroundColor = [PLThemeAccentColor() colorWithAlphaComponent:0.3];
 }
 
 @end
