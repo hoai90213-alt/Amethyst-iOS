@@ -7,6 +7,7 @@
 #import "LauncherPreferences.h"
 #import "LauncherPreferencesViewController.h"
 #import "LauncherPrefContCfgViewController.h"
+#import "LauncherPrefGameDirViewController.h"
 #import "LauncherPrefManageJREViewController.h"
 #import "UIKit+hook.h"
 
@@ -118,6 +119,32 @@
               @"hasDetail": @YES,
               @"icon": @"sidebar.leading",
               @"type": self.typeSwitch,
+              @"enableCondition": whenNotInGame
+            },
+            @{@"key": @"game_directory",
+              @"title": @"Game Directory",
+              @"icon": @"folder",
+              @"type": self.typeChildPane,
+              @"canDismissWithSwipe": @YES,
+              @"class": LauncherPrefGameDirViewController.class,
+              @"enableCondition": whenNotInGame
+            },
+            @{@"key": @"quick_control_layouts",
+              @"title": @"Control Layouts",
+              @"icon": @"slider.horizontal.3",
+              @"type": self.typeButton,
+              @"enableCondition": whenNotInGame,
+              @"suppressDonePrompt": @YES,
+              @"action": ^void(){
+                  [self.navigationController performSelector:@selector(enterCustomControls)];
+              }
+            },
+            @{@"key": @"quick_runtime_manager",
+              @"title": @"Runtime Manager",
+              @"icon": @"cpu",
+              @"type": self.typeChildPane,
+              @"canDismissWithSwipe": @YES,
+              @"class": LauncherPrefManageJREViewController.class,
               @"enableCondition": whenNotInGame
             },
             @{@"key": @"reset_warnings",
@@ -504,10 +531,7 @@
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     if (section == 0) { // Add to general section
-        return [NSString stringWithFormat:@"Angel Aura Amethyst %@-%s (%s/%s)\n%@ on %@ (%s)\nPID: %d",
-            NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"],
-            CONFIG_TYPE, CONFIG_BRANCH, CONFIG_COMMIT,
-            UIDevice.currentDevice.completeOSVersion, [HostManager GetModelName], getenv("POJAV_DETECTEDINST"), getpid()];
+        return nil;
     }
 
     NSString *footer = NSLocalizedStringWithDefaultValue(([NSString stringWithFormat:@"preference.section.footer.%@", self.prefSections[section]]), @"Localizable", NSBundle.mainBundle, @" ", nil);

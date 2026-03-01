@@ -71,31 +71,14 @@
     __weak LauncherMenuViewController *weakSelf = self;
     self.options = @[].mutableCopy;
     [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"Profiles"
+                                 imageName:@"person.crop.square.fill" action:^{
+        [contentNavigationController setViewControllers:@[[LauncherProfilesViewController new]] animated:NO];
+    }]];
+    [self.options addObject:(id)[LauncherMenuCustomItem
                                  title:@"Launcher News"
                                  imageName:@"newspaper.fill" action:^{
         [contentNavigationController setViewControllers:@[[LauncherNewsViewController new]] animated:NO];
-    }]];
-    if (realUIIdiom != UIUserInterfaceIdiomTV) {
-        [self.options addObject:(id)[LauncherMenuCustomItem
-                                     title:@"Control Layouts"
-                                     imageName:@"slider.horizontal.3" action:^{
-            [contentNavigationController performSelector:@selector(enterCustomControls)];
-        }]];
-    }
-    [self.options addObject:(id)[LauncherMenuCustomItem
-                                 title:@"Runtime Manager"
-                                 imageName:@"cpu.fill" action:^{
-        [contentNavigationController setViewControllers:@[[LauncherPrefManageJREViewController new]] animated:NO];
-    }]];
-    [self.options addObject:(id)[LauncherMenuCustomItem
-                                 title:@"Account"
-                                 imageName:@"person.crop.circle.fill" action:^{
-        [weakSelf selectAccount:weakSelf.accountButton];
-    }]];
-    [self.options addObject:(id)[LauncherMenuCustomItem
-                                 title:@"Game Directory"
-                                 imageName:@"folder.fill" action:^{
-        [contentNavigationController setViewControllers:@[[LauncherPrefGameDirViewController new]] animated:NO];
     }]];
     [self.options addObject:
      (id)[LauncherMenuCustomItem
@@ -186,16 +169,14 @@
         self.accountButton = [UIButton buttonWithType:UIButtonTypeCustom];
         [self.accountButton addTarget:self action:@selector(selectAccount:) forControlEvents:UIControlEventPrimaryActionTriggered];
         self.accountButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
-        self.accountButton.frame = CGRectMake(0, 0, 148, 32);
-        self.accountButton.contentEdgeInsets = UIEdgeInsetsMake(2, 2, 2, 6);
-        self.accountButton.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
-        self.accountButton.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 4);
+        self.accountButton.frame = CGRectMake(0, 0, 30, 30);
+        self.accountButton.contentEdgeInsets = UIEdgeInsetsZero;
+        self.accountButton.titleEdgeInsets = UIEdgeInsetsZero;
+        self.accountButton.imageEdgeInsets = UIEdgeInsetsZero;
         self.accountButton.imageView.contentMode = UIViewContentModeScaleAspectFit;
-        self.accountButton.imageView.layer.cornerRadius = 12.0;
+        self.accountButton.imageView.layer.cornerRadius = 15.0;
         self.accountButton.imageView.layer.masksToBounds = YES;
-        self.accountButton.titleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-        self.accountButton.titleLabel.numberOfLines = 1;
-        self.accountButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        self.accountButton.titleLabel.hidden = YES;
         self.accountBtnItem = [[UIBarButtonItem alloc] initWithCustomView:self.accountButton];
     }
 
@@ -322,7 +303,7 @@
         }
     };
     vc.modalPresentationStyle = UIModalPresentationPopover;
-    vc.preferredContentSize = CGSizeMake(350, 250);
+    vc.preferredContentSize = CGSizeMake(290, 200);
 
     UIPopoverPresentationController *popoverController = vc.popoverPresentationController;
     popoverController.sourceView = sender;
@@ -335,18 +316,16 @@
 - (void)updateAccountInfo {
     NSDictionary *selected = BaseAuthenticator.current.authData;
     UIImage *placeholder = [[UIImage imageNamed:@"DefaultAccount"] _imageWithSize:CGSizeMake(24, 24)];
-    NSString *titleText = localize(@"login.option.select", nil);
-    
+    [self.accountButton setAttributedTitle:(NSAttributedString *)@"" forState:UIControlStateNormal];
+
     if (selected == nil) {
-        [self.accountButton setAttributedTitle:[[NSAttributedString alloc] initWithString:titleText] forState:UIControlStateNormal];
         [self.accountButton setImage:placeholder forState:UIControlStateNormal];
         return;
     }
 
     // Remove the prefix "Demo." if there is
     BOOL isDemo = [selected[@"username"] hasPrefix:@"Demo."];
-    NSString *username = [selected[@"username"] substringFromIndex:(isDemo ? 5 : 0)];
-    titleText = username.length > 0 ? username : titleText;
+    (void)isDemo;
 
     // Check if we're switching between demo and full mode
     BOOL shouldUpdateProfiles = (getenv("DEMO_LOCK")!=NULL) != isDemo;
@@ -358,10 +337,8 @@
     if (isDemo) {
         setenv("DEMO_LOCK", "1", 1);
         setenv("POJAV_GAME_DIR", [NSString stringWithFormat:@"%s/.demo", getenv("POJAV_HOME")].UTF8String, 1);
-        titleText = [NSString stringWithFormat:@"%@ (Demo)", titleText];
     }
 
-    [self.accountButton setAttributedTitle:[[NSAttributedString alloc] initWithString:titleText] forState:UIControlStateNormal];
     // TODO: Add caching mechanism for profile pictures
     NSURL *url = [NSURL URLWithString:[selected[@"profilePicURL"] stringByReplacingOccurrencesOfString:@"\\/" withString:@"/"]];
     [self.accountButton setImageForState:UIControlStateNormal withURL:url placeholderImage:placeholder];

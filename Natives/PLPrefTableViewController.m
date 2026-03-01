@@ -34,7 +34,8 @@
     self.tableView.rowHeight = 52.0;
     self.tableView.estimatedRowHeight = 52.0;
     self.tableView.sectionHeaderHeight = 28.0;
-    self.tableView.sectionFooterHeight = 10.0;
+    self.tableView.sectionFooterHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedSectionFooterHeight = 20.0;
     if (self.prefSections) {
         self.prefSectionsVisibility = [[NSMutableArray<NSNumber *> alloc] initWithCapacity:self.prefSections.count];
         for (int i = 0; i < self.prefSections.count; i++) {
