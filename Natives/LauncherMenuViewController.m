@@ -4,6 +4,7 @@
 #import "ALTServerConnection.h"
 #import "LauncherNavigationController.h"
 #import "LauncherPrefGameDirViewController.h"
+#import "LauncherPrefManageJREViewController.h"
 #import "LauncherMenuViewController.h"
 #import "LauncherNewsViewController.h"
 #import "LauncherPreferences.h"
@@ -70,25 +71,35 @@
     __weak LauncherMenuViewController *weakSelf = self;
     self.options = @[].mutableCopy;
     [self.options addObject:(id)[LauncherMenuCustomItem
-                                 title:@"About Zenith Launcher"
-                                 imageName:@"info.circle.fill" action:^{
+                                 title:@"Launcher News"
+                                 imageName:@"newspaper.fill" action:^{
         [contentNavigationController setViewControllers:@[[LauncherNewsViewController new]] animated:NO];
     }]];
     if (realUIIdiom != UIUserInterfaceIdiomTV) {
         [self.options addObject:(id)[LauncherMenuCustomItem
-                                     title:@"Manage Control Layouts"
+                                     title:@"Control Layouts"
                                      imageName:@"slider.horizontal.3" action:^{
             [contentNavigationController performSelector:@selector(enterCustomControls)];
         }]];
     }
     [self.options addObject:(id)[LauncherMenuCustomItem
-                                 title:@"Open Main Directory"
+                                 title:@"Runtime Manager"
+                                 imageName:@"cpu.fill" action:^{
+        [contentNavigationController setViewControllers:@[[LauncherPrefManageJREViewController new]] animated:NO];
+    }]];
+    [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"Account Manager"
+                                 imageName:@"person.crop.circle.fill" action:^{
+        [weakSelf selectAccount:weakSelf.accountButton];
+    }]];
+    [self.options addObject:(id)[LauncherMenuCustomItem
+                                 title:@"Game Directory"
                                  imageName:@"folder.fill" action:^{
         [contentNavigationController setViewControllers:@[[LauncherPrefGameDirViewController new]] animated:NO];
     }]];
     [self.options addObject:
      (id)[LauncherMenuCustomItem
-          title:@"Execute .jar"
+          title:@"Install .jar"
           imageName:@"shippingbox.fill" action:^{
         [contentNavigationController performSelector:@selector(enterModInstaller)];
     }]];
@@ -118,6 +129,10 @@
     }
     
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.rowHeight = 62.0;
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 10.0;
+    }
     
     self.navigationController.toolbarHidden = NO;
     UIActivityIndicatorViewStyle indicatorStyle = UIActivityIndicatorViewStyleMedium;

@@ -28,7 +28,7 @@ extern NSMutableDictionary *prefDict;
 
     self.viewControllers = @[masterVc, detailVc];
     [self changeDisplayModeForSize:self.view.frame.size];
-    self.preferredPrimaryColumnWidthFraction = 0.66;
+    self.preferredPrimaryColumnWidthFraction = 0.62;
     self.minimumPrimaryColumnWidth = 320.0;
     self.maximumPrimaryColumnWidth = self.view.bounds.size.width * 0.74;
 }
