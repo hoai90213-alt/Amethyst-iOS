@@ -77,9 +77,6 @@ static UIColor *ZenithAccentColor(void) {
     self.tableView.sectionHeaderHeight = 38.0;
     self.tableView.sectionFooterHeight = 18.0;
     self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 24, 0);
-    if (@available(iOS 15.0, *)) {
-        self.tableView.sectionHeaderTopPadding = 10.0;
-    }
 
     [self buildCreateButton];
     [self buildDashboardHeader];
@@ -116,19 +113,23 @@ static UIColor *ZenithAccentColor(void) {
     __weak LauncherProfilesViewController *weakSelf = self;
     if (@available(iOS 14.0, *)) {
         UIMenu *createMenu = [UIMenu menuWithTitle:localize(@"profile.title.create", nil) image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
-            [UIAction actionWithTitle:@"Vanilla" image:nil identifier:@"vanilla" handler:^(UIAction *action __unused) {
+            [UIAction actionWithTitle:@"Vanilla" image:nil identifier:@"vanilla" handler:^(UIAction *action) {
+                (void)action;
                 [weakSelf actionEditProfile:@{
                     @"name": @"",
                     @"lastVersionId": @"latest-release"
                 }];
             }],
-            [UIAction actionWithTitle:@"Fabric/Quilt" image:nil identifier:@"fabric_or_quilt" handler:^(UIAction *action __unused) {
+            [UIAction actionWithTitle:@"Fabric/Quilt" image:nil identifier:@"fabric_or_quilt" handler:^(UIAction *action) {
+                (void)action;
                 [weakSelf actionCreateFabricProfile];
             }],
-            [UIAction actionWithTitle:@"Forge" image:nil identifier:@"forge" handler:^(UIAction *action __unused) {
+            [UIAction actionWithTitle:@"Forge" image:nil identifier:@"forge" handler:^(UIAction *action) {
+                (void)action;
                 [weakSelf actionCreateForgeProfile];
             }],
-            [UIAction actionWithTitle:@"Modpack" image:nil identifier:@"modpack" handler:^(UIAction *action __unused) {
+            [UIAction actionWithTitle:@"Modpack" image:nil identifier:@"modpack" handler:^(UIAction *action) {
+                (void)action;
                 [weakSelf actionCreateModpackProfile];
             }]
         ]];
@@ -171,7 +172,7 @@ static UIColor *ZenithAccentColor(void) {
     [self.heroCardView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.heroSubtitleLabel.font = [UIFont monospacedSystemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    self.heroSubtitleLabel.font = [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     self.heroSubtitleLabel.textColor = [UIColor colorWithRed:177.0/255.0 green:226.0/255.0 blue:1.0 alpha:1.0];
     self.heroSubtitleLabel.numberOfLines = 1;
     [self.heroCardView addSubview:self.heroSubtitleLabel];
@@ -310,7 +311,8 @@ static UIColor *ZenithAccentColor(void) {
 - (NSArray<NSDictionary *> *)profileEntries {
     NSMutableArray<NSDictionary *> *entries = [NSMutableArray array];
     NSDictionary *profiles = PLProfiles.current.profiles;
-    [profiles enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop __unused) {
+    [profiles enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+        (void)stop;
         if (![key isKindOfClass:NSString.class] || ![obj isKindOfClass:NSDictionary.class]) {
             return;
         }
@@ -481,7 +483,8 @@ static UIColor *ZenithAccentColor(void) {
     [self presentNavigatedViewController:vc];
 }
 
-- (void)actionEditSelectedProfile:(id)sender __unused {
+- (void)actionEditSelectedProfile:(id)sender {
+    (void)sender;
     NSDictionary *selected = [self selectedProfileEntry];
     if (selected == nil) {
         return;
@@ -489,7 +492,8 @@ static UIColor *ZenithAccentColor(void) {
     [self actionEditProfile:[self entryProfile:selected]];
 }
 
-- (void)actionOpenGameDirectory:(id)sender __unused {
+- (void)actionOpenGameDirectory:(id)sender {
+    (void)sender;
     [self.navigationController pushViewController:[LauncherPrefGameDirViewController new] animated:YES];
 }
 
@@ -512,18 +516,21 @@ static UIColor *ZenithAccentColor(void) {
 
 #pragma mark Table view
 
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView __unused {
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    (void)tableView;
     return 2;
 }
 
-- (NSString *)tableView:(UITableView *)tableView __unused titleForHeaderInSection:(NSInteger)section {
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    (void)tableView;
     if (section == LauncherProfilesTableSectionInstance) {
         return localize(@"profile.section.instance", nil);
     }
     return localize(@"profile.section.profiles", nil);
 }
 
-- (NSInteger)tableView:(UITableView *)tableView __unused numberOfRowsInSection:(NSInteger)section {
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    (void)tableView;
     if (section == LauncherProfilesTableSectionInstance) {
         return 2;
     }
@@ -640,18 +647,8 @@ static UIColor *ZenithAccentColor(void) {
     [self.tableView reloadData];
 }
 
-- (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.section != LauncherProfilesTableSectionProfiles) {
-        return;
-    }
-    NSArray<NSDictionary *> *entries = [self profileEntries];
-    if (indexPath.row < 0 || indexPath.row >= entries.count) {
-        return;
-    }
-    [self actionEditProfile:[self entryProfile:entries[indexPath.row]]];
-}
-
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+    (void)tableView;
     if (editingStyle != UITableViewCellEditingStyleDelete || indexPath.section != LauncherProfilesTableSectionProfiles) {
         return;
     }
@@ -672,7 +669,8 @@ static UIColor *ZenithAccentColor(void) {
     confirmAlert.popoverPresentationController.sourceRect = cell.bounds;
 
     __weak LauncherProfilesViewController *weakSelf = self;
-    UIAlertAction *ok = [UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action __unused) {
+    UIAlertAction *ok = [UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        (void)action;
         [PLProfiles.current.profiles removeObjectForKey:profileKey];
         if ([PLProfiles.current.selectedProfileName isEqualToString:profileKey] ||
             [PLProfiles.current.selectedProfileName isEqualToString:profileName]) {
@@ -693,7 +691,8 @@ static UIColor *ZenithAccentColor(void) {
     [self presentViewController:confirmAlert animated:YES completion:nil];
 }
 
-- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView __unused editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
+- (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
+    (void)tableView;
     if (indexPath.section == LauncherProfilesTableSectionInstance || PLProfiles.current.profiles.count <= 1) {
         return UITableViewCellEditingStyleNone;
     }
